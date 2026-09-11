@@ -173,9 +173,10 @@ public class DeviceController : MonoBehaviour
         isTemperatureFaultRunning = false;
         isPressureFaultRunning = false;
 
-        deviceData.temperature = 65.2f;
-        deviceData.pressure = 1.62f;
-        deviceData.rpm = 1450;
+        deviceData.temperature = deviceData.initialTemperature;
+        deviceData.pressure = deviceData.initialPressure;
+        deviceData.rpm = deviceData.initialRpm;
+        deviceData.runtime = deviceData.initialRuntime;
         deviceData.status = "正常";
 
         temperatureLabel.text =
@@ -186,6 +187,9 @@ public class DeviceController : MonoBehaviour
 
         speedLabel.text =
             $"转速    {deviceData.rpm} RPM";
+
+        runtimeLabel.text =
+            $"运行时间    {deviceData.runtime:F1} h";
 
         deviceStatusLabel.text =
             $"状态    ● {deviceData.status}";

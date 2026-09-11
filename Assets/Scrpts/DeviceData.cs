@@ -14,4 +14,18 @@ public class DeviceData : MonoBehaviour
 
     [Header("设备状态")]
     public string status = "正常";
+
+    [Header("初始数据")]
+    [HideInInspector] public float initialTemperature;
+    [HideInInspector] public float initialPressure;
+    [HideInInspector] public int initialRpm;
+    [HideInInspector] public float initialRuntime;
+
+    private void Awake()
+    {
+        initialTemperature = temperature;
+        initialPressure = pressure;
+        initialRpm = rpm;
+        initialRuntime = runtime;
+    }
 }
