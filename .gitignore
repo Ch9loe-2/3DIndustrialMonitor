@@ -27,3 +27,32 @@ sysinfo.txt
 *.apk
 *.aab
 *.unitypackage
+
+# ============================================
+# 后端 API 项目（IndustrialMonitorAPI/）
+# 注意：Unity 默认排除 *.csproj / *.sln，
+# 这里对后端目录开白名单，否则项目文件无法入库
+# ============================================
+!IndustrialMonitorAPI/**/*.csproj
+!IndustrialMonitorAPI/**/*.sln
+
+# .NET 构建产物
+IndustrialMonitorAPI/bin/
+IndustrialMonitorAPI/obj/
+[Dd]ebug/
+[Rr]elease/
+publish/
+artifacts/
+
+# 数据库文件（本地开发库不入库）
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# IDE
+.vs/
+.idea/
+*.DotSettings.user

@@ -47,7 +47,7 @@
 ### 1. 启动后端
 
 ```bash
-cd ../IndustrialMonitorAPI
+cd IndustrialMonitorAPI
 dotnet run --urls "http://localhost:5000"
 ```
 
@@ -184,11 +184,11 @@ Unity 菜单 `Tools` 下提供两个自动化脚本：
 
 ---
 
-## 后端仓库
+## 后端 API
 
-后端服务独立仓库：[IndustrialMonitorAPI](../IndustrialMonitorAPI)
+后端服务位于本仓库 `IndustrialMonitorAPI/` 目录，技术栈 **ASP.NET Core 10 + EF Core + SQLite**。
 
-包含设备管理、报警记录的 REST API 及 SQLite 持久化，详见其 README。
+提供设备管理、报警记录的 REST API 及数据持久化，详见 [IndustrialMonitorAPI/README.md](IndustrialMonitorAPI/README.md)。
 
 ---
 
