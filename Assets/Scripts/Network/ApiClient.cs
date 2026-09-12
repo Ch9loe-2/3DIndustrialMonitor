@@ -60,6 +60,25 @@ public class ApiClient : MonoBehaviour
         CurrentUserName = PlayerPrefs.GetString("AuthUser", "");
     }
 
+    private void OnDestroy()
+    {
+        // Play 模式结束时 Unity 会检测 DontDestroyOnLoad 对象未销毁并报警。
+        // 这里在退出时主动销毁，消除"Objects not cleaned up"警告。
+        if (_instance == this)
+        {
+            _instance = null;
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        // 应用退出时清理，防止残留
+        if (_instance == this)
+        {
+            _instance = null;
+        }
+    }
+
     /// <summary>测试 API 连接（GET /api/devices）</summary>
     public async Task<bool> TestConnection()
     {

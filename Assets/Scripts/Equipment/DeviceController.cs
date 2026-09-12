@@ -1,4 +1,5 @@
 
+using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using System.Threading.Tasks;
@@ -65,6 +66,29 @@ public class DeviceController : MonoBehaviour
     public float pressureWarnThreshold = 2.0f;
     public float pressureFaultThreshold = 2.3f;
 
+    // ── 全局静态度量（解决共享按钮引用导致跨设备混触发） ──
+    /// <summary>当前选中（详情面板上）的设备控制器</summary>
+    private static DeviceController _selectedController = null;
+    /// <summary>所有存活的 DeviceController 实例</summary>
+    private static readonly List<DeviceController> _allControllers = new List<DeviceController>();
+
+    /// <summary>中止所有设备上的故障协程并复位标记</summary>
+    public static void StopAllFaults()
+    {
+        foreach (var c in _allControllers)
+        {
+            if (c == null) continue;
+            c.StopAllCoroutines();
+            c.isTemperatureFaultRunning = false;
+            c.isPressureFaultRunning = false;
+            c.temperatureAlarmAdded = false;
+            c.pressureAlarmAdded = false;
+        }
+    }
+
+    private void OnEnable()  { if (!_allControllers.Contains(this)) _allControllers.Add(this); }
+    private void OnDisable() { _allControllers.Remove(this); }
+
     // 自动仿真的内部状态
     private bool simInitialized = false;
     private float apiSyncTimer = 2f;
@@ -75,6 +99,10 @@ public class DeviceController : MonoBehaviour
     private void OnMouseDown()
     {
         Debug.Log($"点击了{deviceData.deviceName}");
+
+        // 切换选中设备时，中止所有设备上正在运行的故障，防止残留协程冲突
+        StopAllFaults();
+        _selectedController = this;
 
         if (panelSwitcher != null)
         {
@@ -157,6 +185,11 @@ public class DeviceController : MonoBehaviour
     /// </summary>
     public void ToggleOffline()
     {
+        if (this != _selectedController)
+        {
+            Debug.Log($"[DeviceController] 跳过离线切换：{deviceData.deviceName} 非当前选中设备");
+            return;
+        }
         if (deviceData == null)
         {
             return;
@@ -191,6 +224,11 @@ public class DeviceController : MonoBehaviour
 
     private void SimulateTemperatureFault()
     {
+        if (this != _selectedController)
+        {
+            Debug.Log($"[DeviceController] 跳过温度故障：{deviceData.deviceName} 非当前选中设备");
+            return;
+        }
         if (isTemperatureFaultRunning)
         {
             return;
@@ -252,6 +290,11 @@ public class DeviceController : MonoBehaviour
 
     private void SimulatePressureFault()
     {
+        if (this != _selectedController)
+        {
+            Debug.Log($"[DeviceController] 跳过压力故障：{deviceData.deviceName} 非当前选中设备");
+            return;
+        }
         if (isPressureFaultRunning)
         {
             return;
@@ -309,7 +352,14 @@ public class DeviceController : MonoBehaviour
 
     private void RecoverDevice()
     {
-        StopAllCoroutines();
+        if (this != _selectedController)
+        {
+            Debug.Log($"[DeviceController] 跳过恢复：{deviceData.deviceName} 非当前选中设备");
+            return;
+        }
+
+        // 停止所有设备上的故障协程，确保"恢复正常"全局复位
+        StopAllFaults();
 
         isTemperatureFaultRunning = false;
         isPressureFaultRunning = false;

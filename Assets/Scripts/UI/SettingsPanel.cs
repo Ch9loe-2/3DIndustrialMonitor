@@ -65,7 +65,7 @@ public class SettingsPanel : MonoBehaviour
     /// <summary>点击"测试连接"按钮时调用</summary>
     public void OnTestConnection()
     {
-        string address = apiAddressInput != null ? apiAddressInput.text : "http://localhost:5000";
+        string address = apiAddressInput != null ? apiAddressInput.text : "http://localhost:5175";
 
         PlayerPrefs.SetString(ApiAddressPrefKey, address);
         PlayerPrefs.Save();
