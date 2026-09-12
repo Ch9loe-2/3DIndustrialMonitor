@@ -21,7 +21,7 @@ public class SettingsPanel : MonoBehaviour
     private void Start()
     {
         // 读取已保存的 API 地址
-        string savedAddress = PlayerPrefs.GetString(ApiAddressPrefKey, "http://localhost:5000");
+        string savedAddress = PlayerPrefs.GetString(ApiAddressPrefKey, "http://localhost:5175");
         if (apiAddressInput != null)
         {
             apiAddressInput.text = savedAddress;

@@ -66,12 +66,6 @@ public class DeviceController : MonoBehaviour
     public float pressureFaultThreshold = 2.3f;
 
     // 自动仿真的内部状态
-    private float simEventTimer = 6f;
-    private bool simEventActive = false;
-    private float simEventRemaining = 0f;
-    private string simEventKind = "temp";
-    private float targetTemperature;
-    private float targetPressure;
     private bool simInitialized = false;
     private float apiSyncTimer = 2f;
 
@@ -337,12 +331,7 @@ public class DeviceController : MonoBehaviour
         // 同步设备数据到 API
         _ = SyncToApiAsync();
 
-        // 重置自动仿真：恢复后温度/压力回到初始，避免自动事件把数值又拉高
-        simEventActive = false;
-        manualFaultActive = false;  // 清除手动故障标记，允许自动仿真继续
-        simEventTimer = UnityEngine.Random.Range(8f, 16f);
-        targetTemperature = deviceData.initialTemperature;
-        targetPressure = deviceData.initialPressure;
+        manualFaultActive = false;  // 清除手动故障标记，允许自动仿真继续继续平稳波动
 
         ApiClient.Instance?.LogOperation("设备恢复", deviceData.deviceName, "手动恢复正常");
     }
@@ -372,8 +361,6 @@ public class DeviceController : MonoBehaviour
     {
         if (simInitialized) return;
         simInitialized = true;
-        targetTemperature = deviceData.initialTemperature;
-        targetPressure = deviceData.initialPressure;
     }
 
     private void Update()
@@ -398,68 +385,23 @@ public class DeviceController : MonoBehaviour
     }
 
     /// <summary>
-    /// 自然仿真：温度/压力围绕初始值小幅浮动；不定时触发一次升温/升压工况事件，
-    /// 让数据"活"起来，也让"超阈值自动报警"有机会真正自行触发。
-    /// 手动故障协程运行时跳过对应维度，交给协程控制数值。
+    /// 自然仿真：温度/压力围绕初始值做小幅随机波动（让数据看起来是活的）。
+    /// 超阈值事件仅由"手动故障模拟"按钮触发，仿真从不主动越线。
     /// </summary>
     private void TickSimulation(float dt)
     {
-        // 手动故障激活时，仿真不产生任何新事件，保持当前数值
-        // 用户必须点"恢复正常"才能清除 manualFaultActive 标记
+        // 手动故障激活时，仿真冻结数值，直到点"恢复正常"
         if (manualFaultActive) return;
 
-        if (!simEventActive)
-        {
-            simEventTimer -= dt;
-            if (simEventTimer <= 0f)
-            {
-                if (UnityEngine.Random.value < 0.5f)
-                {
-                    simEventActive = true;
-                    simEventRemaining = UnityEngine.Random.Range(4f, 8f);
-                    simEventKind = UnityEngine.Random.value < 0.6f ? "temp" : "pressure";
-                    bool fault = UnityEngine.Random.value < 0.35f;
-                    if (simEventKind == "temp")
-                    {
-                        targetTemperature = fault
-                            ? UnityEngine.Random.Range(90f, 100f)
-                            : UnityEngine.Random.Range(78f, 86f);
-                    }
-                    else
-                    {
-                        targetPressure = fault
-                            ? UnityEngine.Random.Range(2.3f, 2.6f)
-                            : UnityEngine.Random.Range(2.0f, 2.25f);
-                    }
-                }
-                else
-                {
-                    simEventTimer = UnityEngine.Random.Range(6f, 14f);
-                }
-            }
-        }
-        else
-        {
-            simEventRemaining -= dt;
-            if (simEventRemaining <= 0f)
-            {
-                simEventActive = false;
-                simEventTimer = UnityEngine.Random.Range(8f, 16f);
-                targetTemperature = deviceData.initialTemperature;
-                targetPressure = deviceData.initialPressure;
-            }
-        }
-
-        // 向目标值平滑插值（手动故障时跳过对应维度）
         if (!isTemperatureFaultRunning)
         {
-            deviceData.temperature = Mathf.Lerp(deviceData.temperature, targetTemperature, 3f * dt)
-                + UnityEngine.Random.Range(-0.15f, 0.15f);
+            deviceData.temperature += UnityEngine.Random.Range(-0.4f, 0.4f);
+            deviceData.temperature = Mathf.Lerp(deviceData.temperature, deviceData.initialTemperature, dt * 0.5f);
         }
         if (!isPressureFaultRunning)
         {
-            deviceData.pressure = Mathf.Lerp(deviceData.pressure, targetPressure, 3f * dt)
-                + UnityEngine.Random.Range(-0.01f, 0.01f);
+            deviceData.pressure += UnityEngine.Random.Range(-0.03f, 0.03f);
+            deviceData.pressure = Mathf.Lerp(deviceData.pressure, deviceData.initialPressure, dt * 0.5f);
         }
     }
 

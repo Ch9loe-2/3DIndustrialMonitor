@@ -33,7 +33,7 @@ public class ApiClient : MonoBehaviour
     }
 
     /// <summary>后端 API 基地址，由 SettingsPanel 设置</summary>
-    public string BaseUrl { get; set; } = "http://localhost:5000";
+    public string BaseUrl { get; set; } = "http://localhost:5175";
 
     /// <summary>连接状态变化事件</summary>
     public event Action<bool> OnConnectionStatusChanged;
