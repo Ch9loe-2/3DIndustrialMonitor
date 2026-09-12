@@ -12,10 +12,16 @@ using UnityEngine.Networking;
 public class ApiClient : MonoBehaviour
 {
     private static ApiClient _instance;
+    /// <summary>场景关闭/退出中的标记，防止 Instance getter 重建新对象导致残留</summary>
+    private static bool _isShuttingDown = false;
+
     public static ApiClient Instance
     {
         get
         {
+            // 场景关闭/退出中禁止重建，返回 null
+            if (_isShuttingDown) return null;
+
             // 场景卸载/关闭时禁止重建，避免 DontDestroyOnLoad 引发的清理错误
             if (!Application.isPlaying)
             {
@@ -53,7 +59,6 @@ public class ApiClient : MonoBehaviour
             return;
         }
         _instance = this;
-        DontDestroyOnLoad(gameObject);
 
         // 读取已保存的登录态
         AuthToken = PlayerPrefs.GetString("AuthToken", "");
@@ -62,21 +67,14 @@ public class ApiClient : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Play 模式结束时 Unity 会检测 DontDestroyOnLoad 对象未销毁并报警。
-        // 这里在退出时主动销毁，消除"Objects not cleaned up"警告。
-        if (_instance == this)
-        {
-            _instance = null;
-        }
+        _isShuttingDown = true;
+        _instance = null;
     }
 
     private void OnApplicationQuit()
     {
-        // 应用退出时清理，防止残留
-        if (_instance == this)
-        {
-            _instance = null;
-        }
+        _isShuttingDown = true;
+        _instance = null;
     }
 
     /// <summary>测试 API 连接（GET /api/devices）</summary>
