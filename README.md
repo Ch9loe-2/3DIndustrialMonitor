@@ -204,9 +204,27 @@ Unity 菜单 `Tools` 下提供两个自动化脚本：
 
 ## 后端 API
 
-后端服务位于本仓库 `IndustrialMonitorAPI/` 目录，技术栈 **ASP.NET Core 10 + EF Core + SQLite**。
+后端服务位于本仓库 `IndustrialMonitorAPI/` 目录，技术栈 **ASP.NET Core 10 + EF Core + SQLite + Swagger**。
 
 提供设备管理、报警记录的 REST API 及数据持久化，详见 [IndustrialMonitorAPI/README.md](IndustrialMonitorAPI/README.md)。
+
+### 后端分层设计
+
+```
+Controllers  →  处理 HTTP 请求，返回统一 ApiResponse<T>
+Services     →  业务逻辑、参数校验、日志记录
+DTOs         →  请求模型，隔离数据库实体
+Common       →  统一响应模型
+Data         →  EF Core 上下文与种子数据
+```
+
+**统一响应格式**（所有接口一致，含错误响应）：
+
+```json
+{ "code": 200, "message": "查询成功", "data": [] }
+```
+
+启动后访问 `http://localhost:5000/swagger` 可查看完整接口文档。
 
 ---
 

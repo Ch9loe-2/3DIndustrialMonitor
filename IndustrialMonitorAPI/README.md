@@ -2,7 +2,7 @@
 
 三维工业设备监控与故障模拟系统的**后端服务**，为 Unity 前端提供设备数据、报警记录的持久化存储。
 
-技术栈：ASP.NET Core 10 + Entity Framework Core + SQLite
+技术栈：ASP.NET Core 10 + Entity Framework Core + SQLite + Swagger
 
 ---
 
@@ -17,7 +17,49 @@ dotnet run --urls "http://localhost:5000"
 2. 建表（Devices / AlarmRecords）
 3. 写入 3 台设备的种子数据（设备 A / B / C）
 
-看到 `Now listening on: http://localhost:5000` 即启动成功。
+访问 **http://localhost:5000/swagger** 查看并测试接口文档。
+
+---
+
+## 统一响应格式
+
+所有接口返回统一结构，便于前端统一处理：
+
+```json
+{
+  "code": 200,
+  "message": "查询成功",
+  "data": [...]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| code | int | 业务状态码 |
+| message | string | 操作结果信息 |
+| data | object | 返回的数据（可能为 null） |
+
+### 错误响应示例
+
+参数校验失败：
+
+```json
+{
+  "code": 400,
+  "message": "温度必须在 -50 ~ 500 ℃ 之间",
+  "data": null
+}
+```
+
+服务器异常（全局异常处理，不暴露内部信息）：
+
+```json
+{
+  "code": 500,
+  "message": "服务器内部发生错误",
+  "data": null
+}
+```
 
 ---
 
@@ -28,10 +70,10 @@ dotnet run --urls "http://localhost:5000"
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/devices` | 获取全部设备 |
-| GET | `/api/devices/{id}` | 获取单台设备 |
+| GET | `/api/devices/{id}` | 根据 ID 获取设备 |
 | PUT | `/api/devices/{id}` | 更新设备数据与状态 |
 
-更新设备请求体示例：
+更新设备请求体（使用 `DeviceUpdateRequest` DTO）：
 
 ```json
 {
@@ -43,18 +85,26 @@ dotnet run --urls "http://localhost:5000"
 }
 ```
 
-状态取值：`正常` / `警告` / `故障` / `离线`
+校验规则：
+
+| 字段 | 规则 |
+|------|------|
+| Temperature | -50 ~ 500 |
+| Pressure | 0 ~ 100 |
+| Rpm | 0 ~ 100000 |
+| Runtime | 不能为负 |
+| Status | 只能是 正常 / 警告 / 故障 / 离线 |
 
 ### 报警记录
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/alarms` | 获取全部报警（按时间倒序） |
+| GET | `/api/alarms` | 获取全部报警（时间倒序） |
 | GET | `/api/alarms/recent` | 获取最近一条未恢复报警 |
 | POST | `/api/alarms` | 新增报警 |
 | PUT | `/api/alarms/recover/{deviceName}` | 恢复该设备所有未恢复报警 |
 
-新增报警请求体示例：
+新增报警请求体（使用 `AlarmCreateRequest` DTO）：
 
 ```json
 {
@@ -81,7 +131,7 @@ dotnet run --urls "http://localhost:5000"
 | Rpm | int | 转速 |
 | Runtime | float | 运行时长（h） |
 | Status | string | 状态 |
-| Initial* | float/int | 初始值（恢复时回退到这些值） |
+| Initial* | float/int | 初始值（恢复时回退） |
 
 ### AlarmRecord（报警记录）
 
@@ -93,7 +143,7 @@ dotnet run --urls "http://localhost:5000"
 | AlarmLevel | string | 报警等级 |
 | AlarmMessage | string | 报警描述 |
 | Time | DateTime | 发生时间 |
-| Status | string | `未恢复` / `已恢复` |
+| Status | string | 未恢复 / 已恢复 |
 | RecoverTime | DateTime? | 恢复时间 |
 
 ---
@@ -102,16 +152,59 @@ dotnet run --urls "http://localhost:5000"
 
 ```
 IndustrialMonitorAPI/
-├── Program.cs                     # 服务注册、CORS、自动建库
+├── Program.cs                      # 服务注册、全局异常处理、Swagger
+├── Common/
+│   └── ApiResponse.cs              # 统一 API 响应模型
+├── Controllers/
+│   ├── DevicesController.cs        # 设备接口
+│   └── AlarmsController.cs         # 报警接口
+├── DTOs/
+│   ├── DeviceUpdateRequest.cs      # 设备更新请求模型
+│   └── AlarmCreateRequest.cs       # 报警创建请求模型
+├── Services/
+│   ├── DeviceService.cs            # 设备业务逻辑
+│   └── AlarmService.cs             # 报警业务逻辑
 ├── Models/
-│   ├── Device.cs                  # 设备实体
-│   └── AlarmRecord.cs             # 报警实体
-├── Data/
-│   └── AppDbContext.cs            # EF Core 上下文 + 种子数据
-└── Controllers/
-    ├── DevicesController.cs       # 设备接口
-    └── AlarmsController.cs        # 报警接口
+│   ├── Device.cs                   # 设备实体
+│   └── AlarmRecord.cs              # 报警实体
+└── Data/
+    └── AppDbContext.cs             # EF Core 上下文 + 种子数据
 ```
+
+---
+
+## 分层设计
+
+### Controllers
+
+负责 HTTP 请求与响应处理，调用 Service 完成业务，返回统一的 `ApiResponse<T>`。不直接操作数据库。
+
+### Services
+
+负责业务逻辑，包括数据校验、数据库操作与日志记录。两个 Service 均通过依赖注入获取 `AppDbContext` 与 `ILogger`。
+
+### DTOs
+
+用于接收客户端请求数据，避免直接使用数据库实体作为请求模型（防止客户端篡改主键等越权风险）。参数校验使用 DataAnnotations 特性。
+
+### Common
+
+存放通用数据结构，如统一响应模型 `ApiResponse<T>`。
+
+### Data
+
+EF Core 数据库上下文配置与种子数据。
+
+---
+
+## 设计要点
+
+- **统一响应格式**：所有接口（含校验失败、服务器异常）均返回 `{code, message, data}`
+- **参数校验**：DTO 上使用 DataAnnotations，校验失败由 `InvalidModelStateResponseFactory` 统一转为 ApiResponse
+- **全局异常处理**：`UseExceptionHandler` 捕获未处理异常，返回 500 且不暴露堆栈信息
+- **日志记录**：Service 层使用 `ILogger` 记录关键操作与警告
+- **Swagger 文档**：每个接口带 `EndpointSummary` / `EndpointDescription` 说明
+- **CORS**：允许任意来源，方便 Unity Editor（localhost）调用
 
 ---
 
@@ -127,8 +220,6 @@ IndustrialMonitorAPI/
 }
 ```
 
-已开放 CORS 允许任意来源，方便 Unity Editor（localhost）直接调用。
-
 ---
 
 ## 联调说明
@@ -140,4 +231,6 @@ IndustrialMonitorAPI/
 
 Unity 设置页会显示连接状态，绿色 `● 已连接` 表示联通。
 
+> Unity 端目前只判断 HTTP 成功与否，不解析响应内容，因此后端改为统一响应格式后前端无需改动。
+>
 > 测试接口时注意：若系统设置了 HTTP 代理，`curl` 需加 `--noproxy '*'`，否则请求会被代理拦截返回 403。
