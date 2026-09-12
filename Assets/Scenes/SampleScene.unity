@@ -9355,18 +9355,9 @@ RectTransform:
   - {fileID: 1067712071}
   - {fileID: 1937712595}
   - {fileID: 919689290}
-  - {fileID: 565789015}
   - {fileID: 213906146}
-  - {fileID: 1575627832}
   - {fileID: 314202863}
-  - {fileID: 1724111405}
-  - {fileID: 1143482930}
-  - {fileID: 1696470054}
-  - {fileID: 284172625}
-  - {fileID: 1928433341}
   - {fileID: 721300506}
-  - {fileID: 1606223364}
-  - {fileID: 1997646028}
   - {fileID: 1146175406}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
