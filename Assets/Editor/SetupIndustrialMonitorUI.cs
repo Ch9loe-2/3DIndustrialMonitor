@@ -88,7 +88,28 @@ public class SetupIndustrialMonitorUI
             AddBottomNavBar(canvasGO.transform, switcher, fontAsset);
 
             // ============================================================
-            // E. 删除旧的 AlarmButton
+            // E1. 历史数据页（折线图）+ 采样器
+            // ============================================================
+            AddHistoryRecorder();
+            AddHistoryPanel(canvasGO.transform, switcher, fontAsset);
+
+            // ============================================================
+            // E2. TopBar 状态联动（API 状态 + 系统状态）
+            // ============================================================
+            AddTopBarController(canvasGO.transform);
+
+            // ============================================================
+            // E3. 设置页 — 加数据报表导出按钮
+            // ============================================================
+            AddExportButtons(canvasGO.transform, fontAsset);
+
+            // ============================================================
+            // E4. 设备详情面板 — 加"离线/上线"按钮
+            // ============================================================
+            AddOfflineButton(canvasGO.transform, fontAsset);
+
+            // ============================================================
+            // F. 删除旧的 AlarmButton
             // ============================================================
             Transform topBar = canvasGO.transform.Find("TopBar");
             if (topBar != null)
@@ -105,7 +126,7 @@ public class SetupIndustrialMonitorUI
             // 标记场景为 dirty 以便保存
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 
-            EditorUtility.DisplayDialog("✅ 完成", "V1 UI 装配完成！\n\n已自动完成：\n• 概览面板加「离线」项\n• 底部最近报警栏\n• 系统设置页\n• 底部导航栏\n• 移除旧报警按钮\n\n请点击 Ctrl+S (Cmd+S) 保存场景。", "确定");
+            EditorUtility.DisplayDialog("✅ 完成", "UI 装配完成！\n\n已自动完成：\n• 概览面板「离线」项\n• 底部最近报警栏\n• 系统设置页 + 报表导出\n• 底部导航栏（历史记录已接入）\n• 历史数据页（折线图）\n• 顶部状态栏联动\n• 设备详情「离线/上线」按钮\n\n请 Ctrl+S (Cmd+S) 保存场景。", "确定");
         }
         catch (System.Exception e)
         {
@@ -463,6 +484,76 @@ public class SetupIndustrialMonitorUI
     }
 
     // ==================================================================
+    // 步骤 F：设备详情面板 — 加"离线/上线"按钮
+    // 位置自动跟随"恢复正常"按钮下方，无需硬编码坐标
+    // ==================================================================
+    private static void AddOfflineButton(Transform canvasTransform, TMP_FontAsset font)
+    {
+        // 找设备详情面板
+        Transform detailPanel = canvasTransform.Find("DeviceDetailPanel");
+        if (detailPanel == null)
+        {
+            Debug.LogWarning("AddOfflineButton: 找不到 DeviceDetailPanel");
+            return;
+        }
+
+        // 已存在则先删除，避免重复
+        Transform existing = detailPanel.Find("OfflineButton");
+        if (existing != null)
+        {
+            Undo.DestroyObjectImmediate(existing.gameObject);
+        }
+
+        // 找"恢复正常"按钮作为位置参考
+        Transform refBtn = detailPanel.Find("RecoveryButton");
+        float posX = 0;
+        float posY = -300;
+        float w = 200;
+        float h = 35;
+        Vector2 anchorMin = Vector2.up;
+        Vector2 anchorMax = Vector2.up;
+
+        if (refBtn != null)
+        {
+            RectTransform refRT = refBtn.GetComponent<RectTransform>();
+            posX = refRT.anchoredPosition.x;
+            posY = refRT.anchoredPosition.y - 50;   // 下方 50px
+            w = refRT.sizeDelta.x;
+            h = refRT.sizeDelta.y;
+            anchorMin = refRT.anchorMin;
+            anchorMax = refRT.anchorMax;
+        }
+
+        // 创建按钮
+        Button offlineBtn = CreateButton(detailPanel, "OfflineButton",
+            posX, posY, w, h,
+            "离线 / 上线", 16, font);
+
+        // 与新按钮保持同样的锚点
+        RectTransform btnRT = offlineBtn.GetComponent<RectTransform>();
+        btnRT.anchorMin = anchorMin;
+        btnRT.anchorMax = anchorMax;
+        btnRT.anchoredPosition = new Vector2(posX, posY);
+
+        // 按钮配色（灰蓝，区别于故障按钮）
+        Image btnImg = offlineBtn.GetComponent<Image>();
+        if (btnImg != null)
+        {
+            btnImg.color = new Color(0.35f, 0.35f, 0.4f, 0.85f);
+        }
+
+        // 把按钮引用赋给场景中所有 DeviceController
+        // （DeviceController.OnMouseDown 里会动态绑定点击回调到当前选中设备）
+        DeviceController[] controllers = UnityEngine.Object.FindObjectsOfType<DeviceController>(true);
+        foreach (DeviceController ctrl in controllers)
+        {
+            SetSerializedProperty(ctrl, "offlineButton", offlineBtn);
+        }
+
+        Debug.Log($"AddOfflineButton: 已创建，并绑定到 {controllers.Length} 个 DeviceController");
+    }
+
+    // ==================================================================
     // 步骤 D：底部导航栏
     // ==================================================================
     private static void AddBottomNavBar(Transform canvasTransform, PanelSwitcher switcher,
@@ -505,7 +596,7 @@ public class SetupIndustrialMonitorUI
         string[] btnNames = { "Btn_DeviceList", "Btn_Monitor", "Btn_AlarmRecord", "Btn_History", "Btn_Settings" };
         string[] btnLabels = { "设备列表", "实时监控", "报警记录", "历史记录", "系统设置" };
         float[] btnPosX = { -360, -180, 0, 180, 360 };
-        string[] switchMethods = { "ShowOverview", "", "ShowAlarmPanel", "", "ShowSettingsPanel" };
+        string[] switchMethods = { "ShowOverview", "", "ShowAlarmPanel", "ShowHistoryPanel", "ShowSettingsPanel" };
 
         for (int i = 0; i < 5; i++)
         {
@@ -529,5 +620,291 @@ public class SetupIndustrialMonitorUI
                 }
             }
         }
+    }
+
+    // ==================================================================
+    // 步骤 E2：TopBar 状态联动控制器
+    // 让顶部"系统状态"和"API 状态"跟随真实数据变化，而非写死
+    // ==================================================================
+    private static void AddTopBarController(Transform canvasTransform)
+    {
+        Transform topBar = canvasTransform.Find("TopBar");
+        if (topBar == null)
+        {
+            Debug.LogWarning("AddTopBarController: 找不到 TopBar");
+            return;
+        }
+
+        // 移除旧组件，避免重复叠加
+        TopBarController oldCtrl = topBar.GetComponent<TopBarController>();
+        if (oldCtrl != null)
+        {
+            Undo.DestroyObjectImmediate(oldCtrl);
+        }
+
+        TopBarController ctrl = topBar.gameObject.AddComponent<TopBarController>();
+
+        // 绑定"系统状态"文字
+        Transform sysText = topBar.Find("SystemStatusText");
+        if (sysText != null)
+        {
+            SetSerializedProperty(ctrl, "systemStatusText", sysText.GetComponent<TMP_Text>());
+        }
+        else
+        {
+            Debug.LogWarning("AddTopBarController: 找不到 SystemStatusText");
+        }
+
+        // 绑定"API 状态"文字
+        Transform apiText = topBar.Find("ApiStatusText");
+        if (apiText != null)
+        {
+            SetSerializedProperty(ctrl, "apiStatusText", apiText.GetComponent<TMP_Text>());
+        }
+        else
+        {
+            Debug.LogWarning("AddTopBarController: 找不到 ApiStatusText");
+        }
+
+        Debug.Log("AddTopBarController: 顶部状态栏已接入联动");
+    }
+
+    // ==================================================================
+    // 步骤 E3：设置页 — 数据报表导出按钮
+    // ==================================================================
+    private static void AddExportButtons(Transform canvasTransform, TMP_FontAsset font)
+    {
+        Transform settingsPanel = canvasTransform.Find("SettingsPanel");
+        if (settingsPanel == null)
+        {
+            Debug.LogWarning("AddExportButtons: 找不到 SettingsPanel");
+            return;
+        }
+
+        // 清理旧按钮，避免重复
+        string[] oldNames = { "ExportAlarmButton", "ExportDeviceButton" };
+        foreach (string oldName in oldNames)
+        {
+            Transform old = settingsPanel.Find(oldName);
+            if (old != null)
+            {
+                Undo.DestroyObjectImmediate(old.gameObject);
+            }
+        }
+
+        // 两个并排的导出按钮（放在"测试连接"下方）
+        Button alarmExportBtn = CreateButton(settingsPanel, "ExportAlarmButton",
+            -75, -320, 140, 34, "导出报警 CSV", 14, font);
+        SetTopCenterAnchor(alarmExportBtn.GetComponent<RectTransform>());
+
+        Button deviceExportBtn = CreateButton(settingsPanel, "ExportDeviceButton",
+            75, -320, 140, 34, "导出设备 CSV", 14, font);
+        SetTopCenterAnchor(deviceExportBtn.GetComponent<RectTransform>());
+
+        // 配色（绿色系，区别于蓝色测试按钮）
+        Image img1 = alarmExportBtn.GetComponent<Image>();
+        if (img1 != null) img1.color = new Color(0.2f, 0.6f, 0.35f, 0.85f);
+
+        Image img2 = deviceExportBtn.GetComponent<Image>();
+        if (img2 != null) img2.color = new Color(0.2f, 0.6f, 0.35f, 0.85f);
+
+        // 挂 ReportExporter 脚本
+        ReportExporter exporter = settingsPanel.GetComponent<ReportExporter>();
+        if (exporter == null)
+        {
+            exporter = settingsPanel.gameObject.AddComponent<ReportExporter>();
+        }
+
+        // 绑定点击事件
+        BindMethod(alarmExportBtn, exporter, "ExportAlarms");
+        BindMethod(deviceExportBtn, exporter, "ExportDevices");
+
+        Debug.Log("AddExportButtons: 导出按钮创建完成");
+    }
+
+    /// <summary>把按钮的 onClick 绑定到目标对象的指定无参方法</summary>
+    private static void BindMethod(Button btn, Object target, string methodName)
+    {
+        if (btn == null || target == null) return;
+
+        var method = target.GetType().GetMethod(methodName,
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+        if (method == null)
+        {
+            Debug.LogWarning($"BindMethod: 找不到方法 {methodName}");
+            return;
+        }
+
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(
+            btn.onClick,
+            (UnityEngine.Events.UnityAction)System.Delegate.CreateDelegate(
+                typeof(UnityEngine.Events.UnityAction), target, method)
+        );
+    }
+
+    // ==================================================================
+    // 步骤 E1：创建历史数据采样器（场景中的逻辑对象）
+    // ==================================================================
+    private static void AddHistoryRecorder()
+    {
+        // 已存在则跳过，避免重复
+        if (UnityEngine.Object.FindObjectOfType<HistoryRecorder>() != null)
+        {
+            return;
+        }
+
+        GameObject go = new GameObject("HistoryRecorder");
+        Undo.RegisterCreatedObjectUndo(go, "Create HistoryRecorder");
+        go.AddComponent<HistoryRecorder>();
+
+        Debug.Log("AddHistoryRecorder: 已创建采样器");
+    }
+
+    // ==================================================================
+    // 步骤 E2：历史数据页面（折线图 + 设备/指标切换）
+    // ==================================================================
+    private static void AddHistoryPanel(Transform canvasTransform, PanelSwitcher switcher,
+        TMP_FontAsset font)
+    {
+        Transform existingPanel = canvasTransform.Find("HistoryPanel");
+        GameObject panelGO;
+
+        if (existingPanel != null)
+        {
+            panelGO = existingPanel.gameObject;
+            var children = panelGO.transform.Cast<Transform>().ToArray();
+            foreach (var child in children)
+                Undo.DestroyObjectImmediate(child.gameObject);
+        }
+        else
+        {
+            panelGO = new GameObject("HistoryPanel", typeof(RectTransform));
+            Undo.RegisterCreatedObjectUndo(panelGO, "Create HistoryPanel");
+            panelGO.transform.SetParent(canvasTransform, false);
+        }
+
+        // 与其他面板一致的右侧布局
+        RectTransform panelRT = panelGO.GetComponent<RectTransform>();
+        panelRT.anchorMin = new Vector2(1f, 0f);
+        panelRT.anchorMax = new Vector2(1f, 1f);
+        panelRT.pivot = new Vector2(0.5f, 0.5f);
+        panelRT.anchoredPosition = new Vector2(-240, -120);
+        panelRT.sizeDelta = new Vector2(480, -240);
+
+        panelGO.AddComponent<CanvasRenderer>();
+        Image bg = panelGO.GetComponent<Image>();
+        if (bg == null) bg = panelGO.AddComponent<Image>();
+        bg.color = new Color(1, 1, 1, 0.1f);
+
+        // ===== 子元素（垂直居中，锚点统一顶部中心）=====
+
+        // 1. 标题
+        TextMeshProUGUI title = CreateTMPText(panelGO.transform, "HistoryTitle",
+            0, -50, 240, 36,
+            "历史数据", 24, Color.white,
+            TextAlignmentOptions.Center, font);
+        SetTopCenterAnchor(title.GetComponent<RectTransform>());
+
+        // 2. 设备选择按钮（3 个）
+        string[] devNames = { "Btn_DevA", "Btn_DevB", "Btn_DevC" };
+        string[] devLabels = { "设备 A", "设备 B", "设备 C" };
+        float[] devX = { -130, 0, 130 };
+        string[] devMethods = { "SelectDeviceA", "SelectDeviceB", "SelectDeviceC" };
+        Button[] devButtons = new Button[3];
+
+        for (int i = 0; i < 3; i++)
+        {
+            devButtons[i] = CreateButton(panelGO.transform, devNames[i],
+                devX[i], -100, 110, 30, devLabels[i], 14, font);
+            SetTopCenterAnchor(devButtons[i].GetComponent<RectTransform>());
+        }
+
+        // 3. 指标选择按钮（2 个）
+        Button tempBtn = CreateButton(panelGO.transform, "Btn_Temperature",
+            -65, -145, 110, 30, "温度", 14, font);
+        SetTopCenterAnchor(tempBtn.GetComponent<RectTransform>());
+
+        Button pressBtn = CreateButton(panelGO.transform, "Btn_Pressure",
+            65, -145, 110, 30, "压力", 14, font);
+        SetTopCenterAnchor(pressBtn.GetComponent<RectTransform>());
+
+        // 4. 折线图区域
+        GameObject chartGO = new GameObject("LineChart", typeof(RectTransform));
+        Undo.RegisterCreatedObjectUndo(chartGO, "Create LineChart");
+        chartGO.transform.SetParent(panelGO.transform, false);
+        RectTransform chartRT = chartGO.GetComponent<RectTransform>();
+        chartRT.anchorMin = new Vector2(0.5f, 1f);
+        chartRT.anchorMax = new Vector2(0.5f, 1f);
+        chartRT.pivot = new Vector2(0.5f, 0.5f);
+        chartRT.anchoredPosition = new Vector2(0, -290);
+        chartRT.sizeDelta = new Vector2(400, 190);
+
+        chartGO.AddComponent<CanvasRenderer>();
+        LineChart chart = chartGO.AddComponent<LineChart>();
+
+        // 5. 统计信息文字
+        TextMeshProUGUI stat = CreateTMPText(panelGO.transform, "StatText",
+            0, -420, 440, 30,
+            "暂无数据（等待采样中...）", 15, new Color(0.85f, 0.85f, 0.85f),
+            TextAlignmentOptions.Center, font);
+        SetTopCenterAnchor(stat.GetComponent<RectTransform>());
+
+        panelGO.SetActive(false);
+
+        // ===== 挂 HistoryPanel 脚本并绑定引用 =====
+        HistoryPanel historyPanel = panelGO.GetComponent<HistoryPanel>();
+        if (historyPanel == null)
+        {
+            historyPanel = panelGO.AddComponent<HistoryPanel>();
+        }
+
+        SetSerializedProperty(historyPanel, "lineChart", chart);
+        SetSerializedProperty(historyPanel, "titleText", title);
+        SetSerializedProperty(historyPanel, "statText", stat);
+
+        // 绑定设备切换按钮
+        for (int i = 0; i < 3; i++)
+        {
+            int index = i;  // 闭包捕获
+            var method = typeof(HistoryPanel).GetMethod(devMethods[index],
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            if (method != null)
+            {
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(
+                    devButtons[index].onClick,
+                    (UnityEngine.Events.UnityAction)System.Delegate.CreateDelegate(
+                        typeof(UnityEngine.Events.UnityAction), historyPanel, method)
+                );
+            }
+        }
+
+        // 绑定指标切换按钮
+        var tempMethod = typeof(HistoryPanel).GetMethod("SelectTemperature",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        if (tempMethod != null)
+        {
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(
+                tempBtn.onClick,
+                (UnityEngine.Events.UnityAction)System.Delegate.CreateDelegate(
+                    typeof(UnityEngine.Events.UnityAction), historyPanel, tempMethod)
+            );
+        }
+
+        var pressMethod = typeof(HistoryPanel).GetMethod("SelectPressure",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        if (pressMethod != null)
+        {
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(
+                pressBtn.onClick,
+                (UnityEngine.Events.UnityAction)System.Delegate.CreateDelegate(
+                    typeof(UnityEngine.Events.UnityAction), historyPanel, pressMethod)
+            );
+        }
+
+        // 挂到 PanelSwitcher
+        SetSerializedProperty(switcher, "historyPanel", panelGO);
+
+        Debug.Log("AddHistoryPanel: 历史数据页创建完成");
     }
 }

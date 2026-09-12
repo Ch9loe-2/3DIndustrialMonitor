@@ -6,6 +6,7 @@ public class PanelSwitcher : MonoBehaviour
     [SerializeField] private GameObject deviceDetailPanel;
     [SerializeField] private GameObject alarmPanel;
     [SerializeField] private GameObject settingsPanel;
+    [SerializeField] private GameObject historyPanel;
 
     private void Start()
     {
@@ -19,6 +20,7 @@ public class PanelSwitcher : MonoBehaviour
         SetActive(deviceDetailPanel, true);
         SetActive(alarmPanel, false);
         SetActive(settingsPanel, false);
+        SetActive(historyPanel, false);
     }
 
     /// <summary>报警记录 → 显示报警面板，隐藏其他</summary>
@@ -27,6 +29,7 @@ public class PanelSwitcher : MonoBehaviour
         SetActive(deviceDetailPanel, false);
         SetActive(alarmPanel, true);
         SetActive(settingsPanel, false);
+        SetActive(historyPanel, false);
     }
 
     /// <summary>系统设置 → 显示设置面板，隐藏其他</summary>
@@ -35,6 +38,16 @@ public class PanelSwitcher : MonoBehaviour
         SetActive(deviceDetailPanel, false);
         SetActive(alarmPanel, false);
         SetActive(settingsPanel, true);
+        SetActive(historyPanel, false);
+    }
+
+    /// <summary>历史记录 → 显示历史数据面板（折线图），隐藏其他</summary>
+    public void ShowHistoryPanel()
+    {
+        SetActive(deviceDetailPanel, false);
+        SetActive(alarmPanel, false);
+        SetActive(settingsPanel, false);
+        SetActive(historyPanel, true);
     }
 
     /// <summary>回到概览 → 隐藏所有面板（3D 场景 + 右侧概览保持可见）</summary>
@@ -43,6 +56,7 @@ public class PanelSwitcher : MonoBehaviour
         SetActive(deviceDetailPanel, false);
         SetActive(alarmPanel, false);
         SetActive(settingsPanel, false);
+        SetActive(historyPanel, false);
     }
 
     private void SetActive(GameObject obj, bool active)

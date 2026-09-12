@@ -27,6 +27,9 @@ public class DeviceController : MonoBehaviour
     [SerializeField] private UnityEngine.UI.Button pressureFaultButton;
     [SerializeField] private UnityEngine.UI.Button recoveryButton;
 
+    [Header("离线按钮")]
+    [SerializeField] private UnityEngine.UI.Button offlineButton;
+
     [Header("设备状态灯")]
     [SerializeField] private Renderer statusLightRenderer;
 
@@ -76,6 +79,13 @@ public class DeviceController : MonoBehaviour
 
         recoveryButton.onClick.RemoveAllListeners();
         recoveryButton.onClick.AddListener(RecoverDevice);
+
+        // 离线/上线按钮：动态绑定到当前选中设备
+        if (offlineButton != null)
+        {
+            offlineButton.onClick.RemoveAllListeners();
+            offlineButton.onClick.AddListener(ToggleOffline);
+        }
     }
 
     private void UpdateStatusLight()
@@ -98,7 +108,49 @@ public class DeviceController : MonoBehaviour
             case "故障":
                 statusLightRenderer.material.color = Color.red;
                 break;
+
+            case "离线":
+                // 离线用灰色，与其他状态区分
+                statusLightRenderer.material.color = Color.gray;
+                break;
         }
+    }
+
+    /// <summary>
+    /// 切换设备的在线/离线状态（供"离线/上线"按钮调用）。
+    /// 离线时状态灯变灰、概览"离线"计数 +1。
+    /// </summary>
+    public void ToggleOffline()
+    {
+        if (deviceData == null)
+        {
+            return;
+        }
+
+        if (deviceData.isOnline)
+        {
+            deviceData.SetOffline();
+        }
+        else
+        {
+            deviceData.SetOnline();
+        }
+
+        // 刷新详情面板显示
+        if (deviceStatusLabel != null)
+        {
+            deviceStatusLabel.text = $"状态    ● {deviceData.status}";
+        }
+
+        UpdateStatusLight();
+
+        // 通知概览刷新
+        SystemEvents.RaiseDeviceStatusChanged();
+
+        // 同步到 API
+        _ = SyncToApiAsync();
+
+        Debug.Log($"设备 {deviceData.deviceName} 状态：{deviceData.status}");
     }
 
     private void SimulateTemperatureFault()

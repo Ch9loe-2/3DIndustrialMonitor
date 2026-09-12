@@ -97,6 +97,19 @@ Unity 打开本项目，加载 `Assets/Scenes/SampleScene`，点击 Play。
 - API 地址配置（PlayerPrefs 持久化）
 - 连接状态实时显示（未连接 / 测试中 / 已连接）
 - 测试连接按钮，真连后端验证
+- **数据报表导出**：报警记录、设备状态一键导出 CSV
+
+### ⑥ 设备离线检测
+- 设备详情面板「离线 / 上线」按钮切换在线状态
+- 离线时状态灯变灰，系统概览「离线」计数 +1
+- 恢复上线自动还原离线前的状态（不丢失警告/故障）
+- 顶部状态栏同步显示「设备离线（N）」
+
+### ⑦ 历史数据趋势
+- 每 2 秒自动采样，最多保留 60 个数据点
+- 折线图可视化（纯 UI 顶点绘制，不依赖 LineRenderer）
+- 支持切换设备（A/B/C）与指标（温度/压力）
+- 显示当前值、最高、最低与采样点数
 
 ---
 
@@ -117,11 +130,16 @@ Assets/
 │   ├── UI/
 │   │   ├── MonitoringOverview.cs       # 系统概览（事件驱动）
 │   │   ├── PanelSwitcher.cs            # 多面板切换
-│   │   └── SettingsPanel.cs            # 设置页 + 连接测试
+│   │   ├── SettingsPanel.cs            # 设置页 + 连接测试
+│   │   ├── HistoryPanel.cs             # 历史记录页 + 趋势切换
+│   │   ├── LineChart.cs                # 折线图组件（Graphic 子类）
+│   │   └── TopBarController.cs         # 顶部状态栏联动
 │   ├── Simulation/
-│   │   └── AlarmManager.cs             # 报警管理 + API 同步
+│   │   ├── AlarmManager.cs             # 报警管理 + API 同步
+│   │   └── HistoryRecorder.cs          # 历史数据采样器
 │   ├── Data/
-│   │   └── AlarmRecord.cs              # 报警数据模型
+│   │   ├── AlarmRecord.cs              # 报警数据模型
+│   │   └── ReportExporter.cs           # CSV 报表导出
 │   └── Network/
 │       └── ApiClient.cs                # HTTP 客户端单例
 ├── Prefabs/
@@ -198,9 +216,13 @@ Unity 菜单 `Tools` 下提供两个自动化脚本：
 - [x] 设备选中与详情面板
 - [x] 故障模拟与状态联动
 - [x] 报警记录闭环（未恢复 / 已恢复）
-- [x] 系统概览实时统计
+- [x] 系统概览实时统计（含离线）
 - [x] ASP.NET Core 后端 + SQLite
 - [x] Unity ↔ API 联调
-- [ ] 历史数据折线图
-- [ ] 设备离线检测
-- [ ] 数据报表导出
+- [x] 历史数据折线图（温度 / 压力趋势）
+- [x] 设备离线检测
+- [x] 数据报表导出（CSV）
+- [x] 顶部状态栏实时联动
+- [ ] 设备历史数据持久化到后端
+- [ ] 多车间 / 多设备扩展
+- [ ] 用户权限与操作日志
