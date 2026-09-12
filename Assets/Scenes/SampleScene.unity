@@ -2000,7 +2000,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: 0, y: 28}
+  m_AnchoredPosition: {x: 0, y: 82}
   m_SizeDelta: {x: 800, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &294246445
@@ -6082,7 +6082,6 @@ GameObject:
   - component: {fileID: 808565331}
   - component: {fileID: 808565330}
   - component: {fileID: 808565334}
-  - component: {fileID: 808565335}
   - component: {fileID: 808565336}
   m_Layer: 0
   m_Name: Device_A
@@ -6211,19 +6210,7 @@ MonoBehaviour:
   tempFaultThreshold: 90
   pressureWarnThreshold: 2
   pressureFaultThreshold: 2.3
---- !u!114 &808565335
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 808565329}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: db5253ef189a941a69d0d59434b69b14, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  deviceDetailPanel: {fileID: 1937712594}
+
 --- !u!114 &808565336
 MonoBehaviour:
   m_ObjectHideFlags: 0
