@@ -46,6 +46,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // 业务服务
 builder.Services.AddScoped<DeviceService>();
 builder.Services.AddScoped<AlarmService>();
+builder.Services.AddScoped<MetricHistoryService>();
 
 // CORS：允许 Unity Editor (localhost) 调用
 builder.Services.AddCors(options =>
@@ -97,7 +98,7 @@ app.MapGet("/", () => "工业设备监控后端已启动！请访问 /swagger �
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 }
 
 app.Run();

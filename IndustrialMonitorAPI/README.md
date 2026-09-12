@@ -12,10 +12,12 @@
 dotnet run --urls "http://localhost:5000"
 ```
 
-启动后自动完成：
+启动后通过 **EF Core 迁移（Migrate）** 自动完成：
 1. 创建 SQLite 数据库（`industrial_monitor.db`）
-2. 建表（Devices / AlarmRecords）
+2. 建表（Devices / AlarmRecords / DeviceMetricHistories）
 3. 写入 3 台设备的种子数据（设备 A / B / C）
+
+> 数据库结构由 `Migrations/` 目录下的迁移脚本管理，首次启动自动应用，无需手动建表。
 
 访问 **http://localhost:5000/swagger** 查看并测试接口文档。
 
@@ -117,6 +119,31 @@ dotnet run --urls "http://localhost:5000"
 
 ---
 
+### 历史数据（指标采样）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/history` | 批量上报设备指标采样点 |
+| GET | `/api/history/{deviceName}/{metricName}` | 查询某设备某指标最近 N 分钟历史（默认 30，范围 1~1440） |
+| DELETE | `/api/history/cleanup` | 清理超过指定天数的历史数据（默认 7 天） |
+
+批量上报请求体（使用 `MetricBatchRequest` DTO）：
+
+```json
+{
+  "deviceName": "设备 A",
+  "metricName": "温度",
+  "points": [
+    { "value": 66.5, "timestamp": "2026-09-12T03:00:00Z" },
+    { "value": 67.1 }
+  ]
+}
+```
+
+> Unity 端的 `HistoryRecorder` 每 2 秒采样一次，可累积若干点后通过此接口批量上报，减少请求次数。
+
+---
+
 ## 数据模型
 
 ### Device（设备）
@@ -146,6 +173,16 @@ dotnet run --urls "http://localhost:5000"
 | Status | string | 未恢复 / 已恢复 |
 | RecoverTime | DateTime? | 恢复时间 |
 
+### DeviceMetricHistory（指标历史）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| Id | int | 主键 |
+| DeviceName | string | 设备名 |
+| MetricName | string | 指标名（温度 / 压力 / 转速） |
+| Value | float | 采样值 |
+| Timestamp | DateTime | 采样时间（UTC） |
+
 ---
 
 ## 项目结构
@@ -157,18 +194,23 @@ IndustrialMonitorAPI/
 │   └── ApiResponse.cs              # 统一 API 响应模型
 ├── Controllers/
 │   ├── DevicesController.cs        # 设备接口
-│   └── AlarmsController.cs         # 报警接口
+│   ├── AlarmsController.cs         # 报警接口
+│   └── HistoryController.cs         # 历史数据接口
 ├── DTOs/
 │   ├── DeviceUpdateRequest.cs      # 设备更新请求模型
-│   └── AlarmCreateRequest.cs       # 报警创建请求模型
+│   ├── AlarmCreateRequest.cs       # 报警创建请求模型
+│   └── MetricHistoryRequest.cs      # 历史数据上报请求模型
 ├── Services/
 │   ├── DeviceService.cs            # 设备业务逻辑
-│   └── AlarmService.cs             # 报警业务逻辑
+│   ├── AlarmService.cs             # 报警业务逻辑
+│   └── MetricHistoryService.cs       # 历史数据业务逻辑
 ├── Models/
 │   ├── Device.cs                   # 设备实体
-│   └── AlarmRecord.cs              # 报警实体
+│   ├── AlarmRecord.cs              # 报警实体
+│   └── DeviceMetricHistory.cs      # 指标历史实体
 └── Data/
     └── AppDbContext.cs             # EF Core 上下文 + 种子数据
+└── Migrations/                      # EF Core 迁移脚本
 ```
 
 ---
@@ -205,6 +247,7 @@ EF Core 数据库上下文配置与种子数据。
 - **日志记录**：Service 层使用 `ILogger` 记录关键操作与警告
 - **Swagger 文档**：每个接口带 `EndpointSummary` / `EndpointDescription` 说明
 - **CORS**：允许任意来源，方便 Unity Editor（localhost）调用
+- **数据库迁移**：使用 EF Core Migrations 管理表结构，启动时 `Migrate()` 自动应用；种子数据通过 `HasData` 固化（避免动态默认值导致模型不确定）
 
 ---
 

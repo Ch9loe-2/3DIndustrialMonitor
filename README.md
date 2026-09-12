@@ -110,6 +110,7 @@ Unity 打开本项目，加载 `Assets/Scenes/SampleScene`，点击 Play。
 - 折线图可视化（纯 UI 顶点绘制，不依赖 LineRenderer）
 - 支持切换设备（A/B/C）与指标（温度/压力）
 - 显示当前值、最高、最低与采样点数
+- 采样数据可批量上报至后端 `POST /api/history` 持久化到 SQLite，供历史趋势长期留存
 
 ---
 
@@ -241,6 +242,6 @@ Data         →  EF Core 上下文与种子数据
 - [x] 设备离线检测
 - [x] 数据报表导出（CSV）
 - [x] 顶部状态栏实时联动
-- [ ] 设备历史数据持久化到后端
+- [x] 设备历史数据持久化到后端（EF Core 迁移 + HistoryController）
 - [ ] 多车间 / 多设备扩展
 - [ ] 用户权限与操作日志
