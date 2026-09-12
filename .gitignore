@@ -59,3 +59,7 @@ artifacts/
 
 # 内部文档（不上 Git）
 测试清单.md
+
+# TextMesh Pro 官方示例和文档（项目未引用，占仓库 50%+）
+Assets/TextMesh Pro/Examples & Extras/
+Assets/TextMesh Pro/Documentation/
