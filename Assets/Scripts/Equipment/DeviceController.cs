@@ -84,7 +84,7 @@ public class DeviceController : MonoBehaviour
         }
 
         deviceNameTitle.text = deviceData.deviceName;
-        deviceTypeLabel.text = deviceData.deviceType;
+        deviceTypeLabel.text = $"类型    {deviceData.deviceType}    车间    {deviceData.workshop}";
         deviceStatusLabel.text = $"状态    ● {deviceData.status}";
         temperatureLabel.text = $"温度    {deviceData.temperature:F1} ℃";
         pressureLabel.text = $"压力    {deviceData.pressure:F2} MPa";
@@ -347,7 +347,8 @@ public class DeviceController : MonoBehaviour
             pressure = deviceData.pressure,
             rpm = deviceData.rpm,
             runtime = deviceData.runtime,
-            status = deviceData.status
+            status = deviceData.status,
+            workshop = deviceData.workshop
         });
 
         await ApiClient.Instance.PutAsync($"/api/devices/{ApiDeviceId}", json);
@@ -545,5 +546,6 @@ public class DeviceController : MonoBehaviour
         public int rpm;
         public float runtime;
         public string status;
+        public string workshop;
     }
 }

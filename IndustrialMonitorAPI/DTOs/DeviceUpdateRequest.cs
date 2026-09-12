@@ -22,4 +22,7 @@ public class DeviceUpdateRequest
 
     [Required(ErrorMessage = "设备状态不能为空")]
     public string Status { get; set; } = "正常";
+
+    [MaxLength(50)]
+    public string Workshop { get; set; } = "一号车间";
 }

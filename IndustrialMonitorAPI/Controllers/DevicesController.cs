@@ -47,6 +47,18 @@ public class DevicesController : ControllerBase
         return Ok(new ApiResponse<Device>(200, "查询成功", device));
     }
 
+    /// <summary>根据车间名称获取该车间下的设备</summary>
+    [HttpGet("workshop/{workshop}")]
+    [EndpointSummary("根据车间获取设备")]
+    [EndpointDescription("根据车间名称（如 一号车间 / 二号车间）查询该车间下的全部设备。")]
+    [ProducesResponseType(typeof(ApiResponse<List<Device>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<Device>>>> GetByWorkshop(string workshop)
+    {
+        var devices = await _service.GetByWorkshopAsync(workshop);
+
+        return Ok(new ApiResponse<List<Device>>(200, "查询成功", devices));
+    }
+
     /// <summary>更新设备数据与状态</summary>
     [HttpPut("{id:int}")]
     [EndpointSummary("更新设备数据")]

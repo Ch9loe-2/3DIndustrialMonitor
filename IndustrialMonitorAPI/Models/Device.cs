@@ -14,6 +14,9 @@ public class Device
     [MaxLength(50)]
     public string DeviceType { get; set; } = "生产设备";
 
+    [MaxLength(50)]
+    public string Workshop { get; set; } = "一号车间";
+
     public float Temperature { get; set; } = 65.2f;
 
     public float Pressure { get; set; } = 1.62f;

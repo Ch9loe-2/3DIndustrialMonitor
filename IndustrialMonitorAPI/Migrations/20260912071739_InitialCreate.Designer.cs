@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IndustrialMonitorAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260912040105_InitialCreate")]
+    [Migration("20260912071739_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -113,6 +113,11 @@ namespace IndustrialMonitorAPI.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Workshop")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.ToTable("Devices");
@@ -133,7 +138,8 @@ namespace IndustrialMonitorAPI.Migrations
                             Runtime = 128.5f,
                             Status = "正常",
                             Temperature = 65.2f,
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Workshop = "一号车间"
                         },
                         new
                         {
@@ -150,7 +156,8 @@ namespace IndustrialMonitorAPI.Migrations
                             Runtime = 96.3f,
                             Status = "正常",
                             Temperature = 68.5f,
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Workshop = "一号车间"
                         },
                         new
                         {
@@ -167,7 +174,8 @@ namespace IndustrialMonitorAPI.Migrations
                             Runtime = 210.7f,
                             Status = "正常",
                             Temperature = 61.8f,
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Workshop = "二号车间"
                         });
                 });
 

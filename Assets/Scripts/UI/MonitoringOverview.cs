@@ -13,6 +13,9 @@ public class MonitoringOverview : MonoBehaviour
     [Header("监控设备")]
     [SerializeField] private DeviceData[] devices;
 
+    [Header("车间分组统计")]
+    [SerializeField] private TMP_Text workshopSummaryText;
+
     private void OnEnable()
     {
         SystemEvents.DeviceStatusChanged += UpdateOverview;
@@ -72,6 +75,39 @@ public class MonitoringOverview : MonoBehaviour
         if (offlineDevicesValue != null)
         {
             offlineDevicesValue.text = offline.ToString();
+        }
+
+        // 按车间分组统计（各车间设备数 / 异常数）
+        if (workshopSummaryText != null)
+        {
+            System.Collections.Generic.Dictionary<string, int[]> stat =
+                new System.Collections.Generic.Dictionary<string, int[]>();
+
+            foreach (DeviceData device in devices)
+            {
+                if (device == null) continue;
+
+                if (!stat.ContainsKey(device.workshop))
+                {
+                    stat[device.workshop] = new int[2]; // [0]=总数, [1]=异常数
+                }
+
+                stat[device.workshop][0]++;
+
+                if (device.status != "正常")
+                {
+                    stat[device.workshop][1]++;
+                }
+            }
+
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            foreach (var kvp in stat)
+            {
+                if (sb.Length > 0) sb.Append("    ");
+                sb.Append($"{kvp.Key}: {kvp.Value[0]}台 异常{kvp.Value[1]}");
+            }
+
+            workshopSummaryText.text = sb.ToString();
         }
     }
 }

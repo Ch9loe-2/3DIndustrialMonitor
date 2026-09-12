@@ -44,6 +44,24 @@ public class HistoryPanel : MonoBehaviour
     public void SelectTemperature() { SelectMetric("温度"); }
     public void SelectPressure() { SelectMetric("压力"); }
 
+    // ===== 车间筛选（供 UI 按钮绑定）=====
+    public void SelectWorkshop1() { SelectWorkshop("一号车间"); }
+    public void SelectWorkshop2() { SelectWorkshop("二号车间"); }
+
+    /// <summary>选中某车间时，自动切换到该车间下的第一台设备并刷新图表</summary>
+    private void SelectWorkshop(string workshop)
+    {
+        DeviceData[] all = FindObjectsOfType<DeviceData>();
+        foreach (DeviceData d in all)
+        {
+            if (d != null && d.workshop == workshop)
+            {
+                SelectDevice(d.deviceName);
+                return;
+            }
+        }
+    }
+
     // ===== 核心逻辑 =====
 
     private void SelectDevice(string deviceName)

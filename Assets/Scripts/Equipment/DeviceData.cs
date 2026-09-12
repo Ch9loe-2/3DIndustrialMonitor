@@ -5,6 +5,7 @@ public class DeviceData : MonoBehaviour
     [Header("设备信息")]
     public string deviceName = "设备 A";
     public string deviceType = "生产设备";
+    public string workshop = "一号车间";
 
     [Header("运行数据")]
     public float temperature = 65.2f;
@@ -38,6 +39,16 @@ public class DeviceData : MonoBehaviour
         initialRuntime = runtime;
         statusBeforeOffline = status;
         lastHeartbeatTime = Time.time;
+
+        // 按设备名自动归属车间（可在 Inspector 覆盖）
+        if (deviceName == "设备 C")
+        {
+            workshop = "二号车间";
+        }
+        else
+        {
+            workshop = "一号车间";
+        }
     }
 
     /// <summary>标记为离线（保留原状态，视图层显示为"离线"）</summary>

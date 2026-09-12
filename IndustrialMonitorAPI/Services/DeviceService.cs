@@ -33,6 +33,14 @@ public class DeviceService
         return await _db.Devices.FindAsync(id);
     }
 
+    /// <summary>根据车间名称获取该车间下的全部设备</summary>
+    public async Task<List<Device>> GetByWorkshopAsync(string workshop)
+    {
+        return await _db.Devices
+            .Where(d => d.Workshop == workshop)
+            .ToListAsync();
+    }
+
     /// <summary>更新设备数据与状态</summary>
     public async Task<Device?> UpdateAsync(int id, DeviceUpdateRequest request)
     {
@@ -55,6 +63,7 @@ public class DeviceService
         device.Rpm = request.Rpm;
         device.Runtime = request.Runtime;
         device.Status = request.Status;
+        device.Workshop = request.Workshop;
         device.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

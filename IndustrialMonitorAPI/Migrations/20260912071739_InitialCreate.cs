@@ -56,6 +56,7 @@ namespace IndustrialMonitorAPI.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     DeviceName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     DeviceType = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    Workshop = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     Temperature = table.Column<float>(type: "REAL", nullable: false),
                     Pressure = table.Column<float>(type: "REAL", nullable: false),
                     Rpm = table.Column<int>(type: "INTEGER", nullable: false),
@@ -75,12 +76,12 @@ namespace IndustrialMonitorAPI.Migrations
 
             migrationBuilder.InsertData(
                 table: "Devices",
-                columns: new[] { "Id", "CreatedAt", "DeviceName", "DeviceType", "InitialPressure", "InitialRpm", "InitialRuntime", "InitialTemperature", "Pressure", "Rpm", "Runtime", "Status", "Temperature", "UpdatedAt" },
+                columns: new[] { "Id", "CreatedAt", "DeviceName", "DeviceType", "InitialPressure", "InitialRpm", "InitialRuntime", "InitialTemperature", "Pressure", "Rpm", "Runtime", "Status", "Temperature", "UpdatedAt", "Workshop" },
                 values: new object[,]
                 {
-                    { 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "设备 A", "生产设备", 1.62f, 1450, 128.5f, 65.2f, 1.62f, 1450, 128.5f, "正常", 65.2f, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { 2, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "设备 B", "生产设备", 1.7f, 1500, 96.3f, 68.5f, 1.7f, 1500, 96.3f, "正常", 68.5f, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { 3, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "设备 C", "生产设备", 1.55f, 1380, 210.7f, 61.8f, 1.55f, 1380, 210.7f, "正常", 61.8f, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) }
+                    { 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "设备 A", "生产设备", 1.62f, 1450, 128.5f, 65.2f, 1.62f, 1450, 128.5f, "正常", 65.2f, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "一号车间" },
+                    { 2, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "设备 B", "生产设备", 1.7f, 1500, 96.3f, 68.5f, 1.7f, 1500, 96.3f, "正常", 68.5f, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "一号车间" },
+                    { 3, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "设备 C", "生产设备", 1.55f, 1380, 210.7f, 61.8f, 1.55f, 1380, 210.7f, "正常", 61.8f, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "二号车间" }
                 });
 
             migrationBuilder.CreateIndex(
