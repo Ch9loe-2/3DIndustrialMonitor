@@ -56,3 +56,6 @@ artifacts/
 .vs/
 .idea/
 *.DotSettings.user
+
+# 内部文档（不上 Git）
+测试清单.md
