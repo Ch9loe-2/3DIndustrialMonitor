@@ -1,6 +1,7 @@
 
 using UnityEngine;
 using TMPro;
+using System.Threading.Tasks;
 
 public class DeviceController : MonoBehaviour
 {
@@ -9,6 +10,8 @@ public class DeviceController : MonoBehaviour
 
     [Header("设备详情面板")]
     [SerializeField] private GameObject deviceDetailPanel;
+    [Header("页面切换")]
+    [SerializeField] private PanelSwitcher panelSwitcher;
 
     [Header("UI 文本")]
     [SerializeField] private TMP_Text deviceNameTitle;
@@ -27,16 +30,32 @@ public class DeviceController : MonoBehaviour
     [Header("设备状态灯")]
     [SerializeField] private Renderer statusLightRenderer;
 
+    // API 中该设备的 ID（设备 A=1, B=2, C=3）
+    private int ApiDeviceId
+    {
+        get
+        {
+            if (deviceData == null) return 1;
+            if (deviceData.deviceName == "设备 A") return 1;
+            if (deviceData.deviceName == "设备 B") return 2;
+            if (deviceData.deviceName == "设备 C") return 3;
+            return 1;
+        }
+    }
+
     private bool isTemperatureFaultRunning = false;
     private bool isPressureFaultRunning = false;
+    private bool temperatureAlarmAdded = false;
+    private bool pressureAlarmAdded = false;
+
 
     private void OnMouseDown()
     {
         Debug.Log($"点击了{deviceData.deviceName}");
 
-        if (deviceDetailPanel != null)
+        if (panelSwitcher != null)
         {
-            deviceDetailPanel.SetActive(true);
+            panelSwitcher.ShowDeviceDetail();
         }
 
         deviceNameTitle.text = deviceData.deviceName;
@@ -108,6 +127,18 @@ public class DeviceController : MonoBehaviour
             else
             {
                 deviceData.status = "故障";
+
+                if (!temperatureAlarmAdded && AlarmManager.Instance != null)
+                {
+                    temperatureAlarmAdded = true;
+
+                    AlarmManager.Instance.AddAlarm(
+                        deviceData.deviceName,
+                        "温度过高",
+                        "故障",
+                        $"温度达到 {deviceData.temperature:F1} ℃"
+                    );
+                }
             }
 
             temperatureLabel.text =
@@ -117,6 +148,11 @@ public class DeviceController : MonoBehaviour
                 $"状态    ● {deviceData.status}";
 
             UpdateStatusLight();
+
+            SystemEvents.RaiseDeviceStatusChanged();
+
+            // 同步到 API
+            _ = SyncToApiAsync();
 
             yield return new WaitForSeconds(1f);
         }
@@ -150,8 +186,19 @@ public class DeviceController : MonoBehaviour
             else
             {
                 deviceData.status = "故障";
-            }
 
+                if (!pressureAlarmAdded && AlarmManager.Instance != null)
+                {
+                    pressureAlarmAdded = true;
+
+                    AlarmManager.Instance.AddAlarm(
+                        deviceData.deviceName,
+                        "压力异常",
+                        "故障",
+                        $"压力达到 {deviceData.pressure:F2} MPa"
+                    );
+                }
+            }
             pressureLabel.text =
                 $"压力    {deviceData.pressure:F2} MPa";
 
@@ -159,6 +206,8 @@ public class DeviceController : MonoBehaviour
                 $"状态    ● {deviceData.status}";
 
             UpdateStatusLight();
+
+            SystemEvents.RaiseDeviceStatusChanged();
 
             yield return new WaitForSeconds(1f);
         }
@@ -172,6 +221,8 @@ public class DeviceController : MonoBehaviour
 
         isTemperatureFaultRunning = false;
         isPressureFaultRunning = false;
+        temperatureAlarmAdded = false;
+        pressureAlarmAdded = false;
 
         deviceData.temperature = deviceData.initialTemperature;
         deviceData.pressure = deviceData.initialPressure;
@@ -195,5 +246,40 @@ public class DeviceController : MonoBehaviour
             $"状态    ● {deviceData.status}";
 
         UpdateStatusLight();
+
+        // 恢复该设备的报警记录
+        if (AlarmManager.Instance != null)
+        {
+            AlarmManager.Instance.RecoverAlarm(deviceData.deviceName);
+        }
+
+        // 同步设备数据到 API
+        _ = SyncToApiAsync();
+    }
+
+    private async Task SyncToApiAsync()
+    {
+        if (ApiClient.Instance == null || !ApiClient.Instance.IsConnected) return;
+
+        string json = JsonUtility.ToJson(new DeviceUpdateJson
+        {
+            temperature = deviceData.temperature,
+            pressure = deviceData.pressure,
+            rpm = deviceData.rpm,
+            runtime = deviceData.runtime,
+            status = deviceData.status
+        });
+
+        await ApiClient.Instance.PutAsync($"/api/devices/{ApiDeviceId}", json);
+    }
+
+    [System.Serializable]
+    private class DeviceUpdateJson
+    {
+        public float temperature;
+        public float pressure;
+        public int rpm;
+        public float runtime;
+        public string status;
     }
 }
