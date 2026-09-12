@@ -454,6 +454,9 @@ public class DeviceController : MonoBehaviour
     /// <summary>
     /// 自然仿真：温度/压力围绕初始值做小幅随机波动（让数据看起来是活的）。
     /// 超阈值事件仅由"手动故障模拟"按钮触发，仿真从不主动越线。
+    /// 
+    /// 注意：步长和回拉力的比例必须保证自然波动不会自行达到阈值，
+    /// 否则会导致设备在未点击时频繁出现报警闪烁。
     /// </summary>
     private void TickSimulation(float dt)
     {
@@ -462,13 +465,21 @@ public class DeviceController : MonoBehaviour
 
         if (!isTemperatureFaultRunning)
         {
-            deviceData.temperature += UnityEngine.Random.Range(-0.4f, 0.4f);
-            deviceData.temperature = Mathf.Lerp(deviceData.temperature, deviceData.initialTemperature, dt * 0.5f);
+            deviceData.temperature += UnityEngine.Random.Range(-0.12f, 0.12f);
+            deviceData.temperature = Mathf.Lerp(deviceData.temperature, deviceData.initialTemperature, dt * 2.0f);
+            // 安全钳：自然波动不超过初始值 ±5°C，防止自行越线
+            deviceData.temperature = Mathf.Clamp(deviceData.temperature,
+                deviceData.initialTemperature - 5f,
+                deviceData.initialTemperature + 5f);
         }
         if (!isPressureFaultRunning)
         {
-            deviceData.pressure += UnityEngine.Random.Range(-0.03f, 0.03f);
-            deviceData.pressure = Mathf.Lerp(deviceData.pressure, deviceData.initialPressure, dt * 0.5f);
+            deviceData.pressure += UnityEngine.Random.Range(-0.01f, 0.01f);
+            deviceData.pressure = Mathf.Lerp(deviceData.pressure, deviceData.initialPressure, dt * 2.0f);
+            // 安全钳：自然波动不超过初始值 ±0.3 MPa
+            deviceData.pressure = Mathf.Clamp(deviceData.pressure,
+                deviceData.initialPressure - 0.3f,
+                deviceData.initialPressure + 0.3f);
         }
     }
 
