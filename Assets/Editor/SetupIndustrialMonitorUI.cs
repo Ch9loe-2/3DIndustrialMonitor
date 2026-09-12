@@ -302,6 +302,22 @@ public class SetupIndustrialMonitorUI
     private static void AddRecentAlarmBar(Transform canvasTransform, AlarmManager alarmMgr,
         TMP_FontAsset font)
     {
+        // 防重复：已有则跳过
+        Transform existing = canvasTransform.Find("RecentAlarmBar");
+        if (existing != null)
+        {
+            Debug.Log("AddRecentAlarmBar: 已存在，跳过");
+            if (alarmMgr != null)
+            {
+                TMP_Text existingText = existing.GetComponent<TMP_Text>();
+                if (existingText != null)
+                {
+                    SetSerializedProperty(alarmMgr, "recentAlarmText", existingText);
+                }
+            }
+            return;
+        }
+
         TextMeshProUGUI bar = CreateTMPText(canvasTransform, "RecentAlarmBar",
             0, 30, 800, 30,
             "✓ 当前无异常报警", 16,

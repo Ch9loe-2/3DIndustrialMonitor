@@ -68,6 +68,8 @@ public class DeviceController : MonoBehaviour
     // 自动仿真的内部状态
     private bool simInitialized = false;
     private float apiSyncTimer = 2f;
+    // 缓存材质引用，避免每帧 statusLightRenderer.material 创建新实例导致闪烁
+    private Material cachedStatusLightMaterial = null;
 
 
     private void OnMouseDown()
@@ -106,6 +108,15 @@ public class DeviceController : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        // 初始化缓存材质（一次性，避免每帧创建实例导致闪烁）
+        if (statusLightRenderer != null)
+        {
+            cachedStatusLightMaterial = statusLightRenderer.material;
+        }
+    }
+
     private void UpdateStatusLight()
     {
         if (statusLightRenderer == null)
@@ -113,23 +124,29 @@ public class DeviceController : MonoBehaviour
             return;
         }
 
+        // 确保缓存材质已初始化
+        if (cachedStatusLightMaterial == null)
+        {
+            cachedStatusLightMaterial = statusLightRenderer.material;
+        }
+
         switch (deviceData.status)
         {
             case "正常":
-                statusLightRenderer.material.color = Color.green;
+                cachedStatusLightMaterial.color = Color.green;
                 break;
 
             case "警告":
-                statusLightRenderer.material.color = Color.yellow;
+                cachedStatusLightMaterial.color = Color.yellow;
                 break;
 
             case "故障":
-                statusLightRenderer.material.color = Color.red;
+                cachedStatusLightMaterial.color = Color.red;
                 break;
 
             case "离线":
                 // 离线用灰色，与其他状态区分
-                statusLightRenderer.material.color = Color.gray;
+                cachedStatusLightMaterial.color = Color.gray;
                 break;
         }
     }
