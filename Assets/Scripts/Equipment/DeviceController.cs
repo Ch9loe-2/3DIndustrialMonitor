@@ -50,6 +50,8 @@ public class DeviceController : MonoBehaviour
     private bool isPressureFaultRunning = false;
     private bool temperatureAlarmAdded = false;
     private bool pressureAlarmAdded = false;
+    /// <summary>手动触发故障后保持故障状态，禁止自动仿真恢复，仅点"恢复正常"才清除</summary>
+    private bool manualFaultActive = false;
 
     [Header("自动阈值报警")]
     [Tooltip("是否启用超阈值自动报警：温度/压力达到阈值即自动触发报警，回到正常后自动恢复")]
@@ -184,6 +186,7 @@ public class DeviceController : MonoBehaviour
         }
 
         isTemperatureFaultRunning = true;
+        manualFaultActive = true;  // 手动故障后禁止自动恢复
         ApiClient.Instance?.LogOperation("故障模拟", deviceData.deviceName, "手动触发温度过高故障");
         StartCoroutine(TemperatureFaultRoutine());
     }
@@ -244,6 +247,7 @@ public class DeviceController : MonoBehaviour
         }
 
         isPressureFaultRunning = true;
+        manualFaultActive = true;  // 手动故障后禁止自动恢复
         ApiClient.Instance?.LogOperation("故障模拟", deviceData.deviceName, "手动触发压力异常故障");
         StartCoroutine(PressureFaultRoutine());
     }
@@ -335,6 +339,7 @@ public class DeviceController : MonoBehaviour
 
         // 重置自动仿真：恢复后温度/压力回到初始，避免自动事件把数值又拉高
         simEventActive = false;
+        manualFaultActive = false;  // 清除手动故障标记，允许自动仿真继续
         simEventTimer = UnityEngine.Random.Range(8f, 16f);
         targetTemperature = deviceData.initialTemperature;
         targetPressure = deviceData.initialPressure;
@@ -399,6 +404,10 @@ public class DeviceController : MonoBehaviour
     /// </summary>
     private void TickSimulation(float dt)
     {
+        // 手动故障激活时，仿真不产生任何新事件，保持当前数值
+        // 用户必须点"恢复正常"才能清除 manualFaultActive 标记
+        if (manualFaultActive) return;
+
         if (!simEventActive)
         {
             simEventTimer -= dt;

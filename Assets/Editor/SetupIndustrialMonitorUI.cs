@@ -313,7 +313,7 @@ public class SetupIndustrialMonitorUI
         rt.anchorMin = new Vector2(0.5f, 0f);
         rt.anchorMax = new Vector2(0.5f, 0f);
         rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = new Vector2(0, 28);
+        rt.anchoredPosition = new Vector2(0, 80);
 
         if (alarmMgr != null)
         {

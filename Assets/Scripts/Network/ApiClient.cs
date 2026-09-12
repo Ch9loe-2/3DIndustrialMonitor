@@ -16,6 +16,12 @@ public class ApiClient : MonoBehaviour
     {
         get
         {
+            // 场景卸载/关闭时禁止重建，避免 DontDestroyOnLoad 引发的清理错误
+            if (!Application.isPlaying)
+            {
+                return _instance;
+            }
+
             if (_instance == null)
             {
                 var go = new GameObject("ApiClient");
