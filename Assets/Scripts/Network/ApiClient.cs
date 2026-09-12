@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -8,6 +7,7 @@ using UnityEngine.Networking;
 /// <summary>
 /// API 客户端单例：管理 Unity 与后端 ASP.NET Core API 的 HTTP 通信。
 /// 其他脚本通过 ApiClient.Instance 调用。
+/// 支持登录鉴权（Bearer token）+ 操作日志上报（LogOperation）。
 /// </summary>
 public class ApiClient : MonoBehaviour
 {
@@ -35,6 +35,10 @@ public class ApiClient : MonoBehaviour
     /// <summary>当前是否已连接</summary>
     public bool IsConnected { get; private set; } = false;
 
+    // ── 用户权限：登录后保存 token 与用户名（持久化到 PlayerPrefs）──
+    public string AuthToken { get; private set; } = "";
+    public string CurrentUserName { get; private set; } = "";
+
     private void Awake()
     {
         if (_instance != null && _instance != this)
@@ -44,6 +48,10 @@ public class ApiClient : MonoBehaviour
         }
         _instance = this;
         DontDestroyOnLoad(gameObject);
+
+        // 读取已保存的登录态
+        AuthToken = PlayerPrefs.GetString("AuthToken", "");
+        CurrentUserName = PlayerPrefs.GetString("AuthUser", "");
     }
 
     /// <summary>测试 API 连接（GET /api/devices）</summary>
@@ -52,11 +60,10 @@ public class ApiClient : MonoBehaviour
         try
         {
             using var request = UnityWebRequest.Get($"{BaseUrl}/api/devices");
+            ApplyAuth(request);
             request.timeout = 5;
 
             var op = request.SendWebRequest();
-
-            // 等待完成（Task 方式兼容 Unity）
             while (!op.isDone) await Task.Yield();
 
             bool success = request.result == UnityWebRequest.Result.Success;
@@ -73,12 +80,7 @@ public class ApiClient : MonoBehaviour
         {
             Debug.LogWarning($"ApiClient: 连接测试失败 - {e.Message}");
             IsConnected = false;
-
-            if (OnConnectionStatusChanged != null)
-            {
-                OnConnectionStatusChanged(false);
-            }
-
+            if (OnConnectionStatusChanged != null) OnConnectionStatusChanged(false);
             return false;
         }
     }
@@ -89,6 +91,7 @@ public class ApiClient : MonoBehaviour
         try
         {
             using var request = UnityWebRequest.Get($"{BaseUrl}{endpoint}");
+            ApplyAuth(request);
             request.timeout = 10;
 
             var op = request.SendWebRequest();
@@ -119,6 +122,7 @@ public class ApiClient : MonoBehaviour
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
+            ApplyAuth(request);
             request.timeout = 10;
 
             var op = request.SendWebRequest();
@@ -149,6 +153,7 @@ public class ApiClient : MonoBehaviour
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
+            ApplyAuth(request);
             request.timeout = 10;
 
             var op = request.SendWebRequest();
@@ -167,5 +172,83 @@ public class ApiClient : MonoBehaviour
             Debug.LogWarning($"ApiClient PUT {endpoint} 异常: {e.Message}");
             return null;
         }
+    }
+
+    /// <summary>用户登录：POST /api/auth/login，成功则保存 token</summary>
+    public async Task<bool> LoginAsync(string user, string pass)
+    {
+        if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass)) return false;
+
+        string json = JsonUtility.ToJson(new LoginReqJson { username = user, password = pass });
+        string resp = await PostAsync("/api/auth/login", json);
+        if (string.IsNullOrEmpty(resp)) return false;
+
+        LoginResp r = JsonUtility.FromJson<LoginResp>(resp);
+        if (r == null || r.code != 200 || r.data == null) return false;
+
+        AuthToken = r.data.token;
+        CurrentUserName = r.data.userName;
+
+        PlayerPrefs.SetString("AuthToken", AuthToken);
+        PlayerPrefs.SetString("AuthUser", CurrentUserName);
+        PlayerPrefs.Save();
+
+        return true;
+    }
+
+    /// <summary>操作日志上报（即发即弃；未登录不记，由后端中间件要求 Bearer）</summary>
+    public void LogOperation(string action, string target, string detail)
+    {
+        if (string.IsNullOrEmpty(AuthToken)) return;   // 未登录不审计
+        if (!Application.isPlaying) return;
+
+        string json = JsonUtility.ToJson(new LogReqJson
+        {
+            action = action,
+            target = target,
+            detail = detail
+        });
+
+        _ = PostAsync("/api/logs", json);
+    }
+
+    /// <summary>给请求附加 Authorization 头（已登录时）</summary>
+    private void ApplyAuth(UnityWebRequest request)
+    {
+        if (!string.IsNullOrEmpty(AuthToken))
+        {
+            request.SetRequestHeader("Authorization", "Bearer " + AuthToken);
+        }
+    }
+
+    // ── 登录 / 日志 JSON 模型（camelCase，与 JsonUtility 对齐）──
+    [System.Serializable]
+    private class LoginReqJson
+    {
+        public string username;
+        public string password;
+    }
+
+    [System.Serializable]
+    private class LoginResp
+    {
+        public int code = 0;
+        public string message = null;
+        public LoginData data = null;
+    }
+
+    [System.Serializable]
+    private class LoginData
+    {
+        public string token = null;
+        public string userName = null;
+    }
+
+    [System.Serializable]
+    private class LogReqJson
+    {
+        public string action = null;
+        public string target = null;
+        public string detail = null;
     }
 }

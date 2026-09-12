@@ -10,7 +10,7 @@ using UnityEngine.SceneManagement;
 public class SetupWorkshops
 {
     [MenuItem("Tools/Setup Workshops (复制二号车间)")]
-    static void CopySecondWorkshop()
+    public static void CopySecondWorkshop()
     {
         GameObject floor = GameObject.Find("WorkshopFloor");
         if (floor == null)

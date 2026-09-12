@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<AlarmRecord> AlarmRecords => Set<AlarmRecord>();
     public DbSet<DeviceMetricHistory> DeviceMetricHistories => Set<DeviceMetricHistory>();
+    public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

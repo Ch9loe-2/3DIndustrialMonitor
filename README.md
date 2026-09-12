@@ -136,6 +136,13 @@ Unity 打开本项目，加载 `Assets/Scenes/SampleScene`，点击 Play。
 - 采样数据每 10s 批量上报至后端 `POST /api/history` 持久化到 SQLite
 - 历史页在连接后端时，从 `GET /api/history/{设备}/{指标}?minutes=1440` 拉取长期数据绘制趋势；未连接时回退本地最近采样（带切换防抖）
 
+### ⑧ 用户权限与操作日志
+
+- **登录鉴权**：设置页新增登录区（用户名 / 密码 / 登录按钮）。点击登录调用 `POST /api/auth/login` 获取 Bearer token，后续所有请求由 `ApiClient` 自动附加 `Authorization` 头。Demo 账号：`admin/admin123`、`operator/operator123`
+- **操作日志审计**：关键操作（登录、测试连接、手动故障模拟、设备恢复、设备上下线、报警产生、报警恢复）在连接后端且已登录时，自动上报 `POST /api/logs` 持久化到 `OperationLogs` 表，实现"谁在操作、做了什么、何时、对象是谁"的可追溯审计
+- **权限保护**：写日志接口需登录（后端中间件校验 `Authorization: Bearer` 头，未登录返回 401），未登录的用户无法写入操作日志
+- 操作日志可在后端 `GET /api/logs?limit=200` 查询（按时间倒序）
+
 ---
 
 ## 项目结构
@@ -143,7 +150,8 @@ Unity 打开本项目，加载 `Assets/Scenes/SampleScene`，点击 Play。
 ```
 Assets/
 ├── Editor/
-│   ├── SetupIndustrialMonitorUI.cs    # 一键装配 UI 工具
+│   ├── SetupIndustrialMonitorUI.cs    # 一键装配 UI 工具（含多车间+登录UI 一键装配）
+│   ├── SetupWorkshops.cs              # 二号车间物理分区工具
 │   └── ReorganizeScripts.cs            # 一键整理目录工具
 ├── Scripts/
 │   ├── Core/
@@ -155,7 +163,7 @@ Assets/
 │   ├── UI/
 │   │   ├── MonitoringOverview.cs       # 系统概览（事件驱动）
 │   │   ├── PanelSwitcher.cs            # 多面板切换
-│   │   ├── SettingsPanel.cs            # 设置页 + 连接测试
+│   │   ├── SettingsPanel.cs            # 设置页 + 连接测试 + 用户登录
 │   │   ├── HistoryPanel.cs             # 历史记录页 + 趋势切换
 │   │   ├── LineChart.cs                # 折线图组件（Graphic 子类）
 │   │   └── TopBarController.cs         # 顶部状态栏联动
@@ -166,7 +174,7 @@ Assets/
 │   │   ├── AlarmRecord.cs              # 报警数据模型
 │   │   └── ReportExporter.cs           # CSV 报表导出
 │   └── Network/
-│       └── ApiClient.cs                # HTTP 客户端单例
+│       └── ApiClient.cs                # HTTP 客户端单例（含登录鉴权 + 操作日志上报）
 ├── Prefabs/
 ├── Scenes/
 │   └── SampleScene.unity
@@ -222,6 +230,7 @@ Unity 菜单 `Tools` 下提供两个自动化脚本：
 |--------|------|
 | `Setup Industrial Monitor UI V1` | 一键创建设置页、底部导航栏、最近报警栏等 UI 并自动绑定引用与事件 |
 | `Reorganize Scripts Directory` | 一键将脚本按 Core/Equipment/UI/Simulation/Data/Network 分层整理 |
+| `一键装配：多车间与登录UI` | 一键完成：复制二号车间物理分区 + 绑定概览车间统计文本 + 历史页车间切换按钮 + 设置页登录 UI（需先运行 V1 Setup） |
 
 > 使用前提：需在非 Play 模式下运行（脚本已做防呆检查）。
 
@@ -269,4 +278,4 @@ Data         →  EF Core 上下文与种子数据
 - [x] 设备历史数据持久化到后端（EF Core 迁移 + HistoryController）
 - [x] 报警阈值自动化（超阈值自动报警 + 自动恢复 + 自然仿真）
 - [x] 多车间扩展（设备归属车间 + 概览分组统计 + 历史页车间筛选 + 后端按车间查询 + 二号车间物理分区）
-- [ ] 用户权限与操作日志
+- [x] 用户权限与操作日志（登录鉴权 + 操作日志审计：/api/auth/login、/api/logs）

@@ -120,6 +120,8 @@ public class AlarmManager : MonoBehaviour
         });
 
         await ApiClient.Instance.PostAsync("/api/alarms", json);
+        ApiClient.Instance?.LogOperation("报警产生", record.deviceName,
+            $"{record.alarmType}({record.alarmLevel})：{record.alarmMessage}");
     }
 
     private async Task SyncRecoverAlarmAsync(string deviceName)
@@ -128,6 +130,7 @@ public class AlarmManager : MonoBehaviour
 
         string encoded = UnityEngine.Networking.UnityWebRequest.EscapeURL(deviceName);
         await ApiClient.Instance.PutAsync($"/api/alarms/recover/{encoded}", "{}");
+        ApiClient.Instance?.LogOperation("报警恢复", deviceName, "该设备报警已恢复");
     }
 
     [System.Serializable]

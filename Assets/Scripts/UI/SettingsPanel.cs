@@ -9,6 +9,13 @@ public class SettingsPanel : MonoBehaviour
     [SerializeField] private TMP_Text connectionStatusText;
     [SerializeField] private GameObject testConnectionButton;
 
+    [Header("用户登录")]
+    [SerializeField] private TMP_InputField loginUserInput;
+    [SerializeField] private TMP_InputField loginPassInput;
+    [SerializeField] private GameObject loginButton;
+    [SerializeField] private TMP_Text currentUserText;
+    [SerializeField] private TMP_Text loginStatusText;
+
     private const string ApiAddressPrefKey = "ApiAddress";
 
     private void Start()
@@ -20,13 +27,26 @@ public class SettingsPanel : MonoBehaviour
             apiAddressInput.text = savedAddress;
         }
 
+        // 显示已登录用户（若已保存 token）
+        if (ApiClient.Instance != null && !string.IsNullOrEmpty(ApiClient.Instance.AuthToken))
+        {
+            if (currentUserText != null)
+            {
+                currentUserText.text = "当前用户：" + ApiClient.Instance.CurrentUserName;
+            }
+            if (loginStatusText != null)
+            {
+                loginStatusText.text = "● 已登录";
+                loginStatusText.color = Color.green;
+            }
+        }
+
         // 尝试自动连接
         TryAutoConnect(savedAddress);
     }
 
     private async void TryAutoConnect(string address)
     {
-        // 等待一帧确保 ApiClient 已初始化
         await Task.Yield();
 
         if (ApiClient.Instance == null)
@@ -36,8 +56,6 @@ public class SettingsPanel : MonoBehaviour
         }
 
         ApiClient.Instance.BaseUrl = address;
-
-        // 订阅连接状态变化
         ApiClient.Instance.OnConnectionStatusChanged += OnApiConnectionChanged;
 
         bool connected = await ApiClient.Instance.TestConnection();
@@ -49,11 +67,9 @@ public class SettingsPanel : MonoBehaviour
     {
         string address = apiAddressInput != null ? apiAddressInput.text : "http://localhost:5000";
 
-        // 保存地址
         PlayerPrefs.SetString(ApiAddressPrefKey, address);
         PlayerPrefs.Save();
 
-        // 显示测试中状态
         if (connectionStatusText != null)
         {
             connectionStatusText.text = "● 测试中...";
@@ -75,6 +91,66 @@ public class SettingsPanel : MonoBehaviour
     {
         bool connected = await ApiClient.Instance.TestConnection();
         UpdateConnectionStatus(connected);
+
+        // 审计：测试连接操作（仅已登录时记录）
+        if (connected)
+        {
+            ApiClient.Instance.LogOperation("测试连接", "API", $"连接到 {ApiClient.Instance.BaseUrl}");
+        }
+    }
+
+    /// <summary>点击"登录"按钮时调用</summary>
+    public void OnLogin()
+    {
+        if (ApiClient.Instance == null) return;
+
+        string user = loginUserInput != null ? loginUserInput.text : "";
+        string pass = loginPassInput != null ? loginPassInput.text : "";
+
+        if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass))
+        {
+            if (loginStatusText != null)
+            {
+                loginStatusText.text = "请输入用户名和密码";
+                loginStatusText.color = Color.red;
+            }
+            return;
+        }
+
+        if (loginStatusText != null)
+        {
+            loginStatusText.text = "● 登录中...";
+            loginStatusText.color = Color.yellow;
+        }
+
+        _ = DoLoginAsync(user, pass);
+    }
+
+    private async Task DoLoginAsync(string user, string pass)
+    {
+        bool ok = await ApiClient.Instance.LoginAsync(user, pass);
+
+        if (ok)
+        {
+            if (currentUserText != null)
+            {
+                currentUserText.text = "当前用户：" + ApiClient.Instance.CurrentUserName;
+            }
+            if (loginStatusText != null)
+            {
+                loginStatusText.text = "● 登录成功";
+                loginStatusText.color = Color.green;
+            }
+            ApiClient.Instance.LogOperation("登录", ApiClient.Instance.CurrentUserName, "用户登录系统");
+        }
+        else
+        {
+            if (loginStatusText != null)
+            {
+                loginStatusText.text = "● 登录失败（用户名或密码错误）";
+                loginStatusText.color = Color.red;
+            }
+        }
     }
 
     private void OnApiConnectionChanged(bool isConnected)
@@ -85,10 +161,7 @@ public class SettingsPanel : MonoBehaviour
     /// <summary>供外部调用：更新连接状态显示</summary>
     public void UpdateConnectionStatus(bool isConnected)
     {
-        if (connectionStatusText == null)
-        {
-            return;
-        }
+        if (connectionStatusText == null) return;
 
         if (isConnected)
         {

@@ -14,7 +14,7 @@ dotnet run --urls "http://localhost:5000"
 
 启动后通过 **EF Core 迁移（Migrate）** 自动完成：
 1. 创建 SQLite 数据库（`industrial_monitor.db`）
-2. 建表（Devices / AlarmRecords / DeviceMetricHistories）
+2. 建表（Devices / AlarmRecords / DeviceMetricHistories / OperationLogs）
 3. 写入 3 台设备的种子数据（设备 A / B / C）
 
 > 数据库结构由 `Migrations/` 目录下的迁移脚本管理，首次启动自动应用，无需手动建表。
@@ -142,6 +142,28 @@ dotnet run --urls "http://localhost:5000"
 
 > Unity 端的 `HistoryRecorder` 每 2 秒采样一次，可累积若干点后通过此接口批量上报，减少请求次数。
 
+### 用户权限与操作日志
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/auth/login` | 用户登录，返回 Bearer token（Demo 账号：admin/admin123、operator/operator123） |
+| GET | `/api/logs` | 查询最近操作日志（按时间倒序） |
+| POST | `/api/logs` | 记录操作日志（**需登录**：未带 `Authorization: Bearer` 头返回 401） |
+
+登录请求体：
+
+```json
+{ "username": "admin", "password": "admin123" }
+```
+
+操作日志请求体（使用 `OperationLogRequest` DTO）：
+
+```json
+{ "action": "故障模拟", "target": "设备 A", "detail": "手动触发温度过高故障" }
+```
+
+> 写日志接口由 `Program.cs` 中间件保护：仅允许携带有效 Bearer token 的请求，实现"未登录不能写入操作日志"的权限控制。操作记录持久化到 `OperationLogs` 表（操作人 / 类型 / 对象 / 详情 / 时间）。
+
 ---
 
 ## 数据模型
@@ -183,6 +205,18 @@ dotnet run --urls "http://localhost:5000"
 | Value | float | 采样值 |
 | Timestamp | DateTime | 采样时间（UTC） |
 
+### OperationLog（操作日志）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| Id | int | 主键 |
+| UserName | string | 操作人（来自登录 token；未登录记"匿名"） |
+| Action | string | 操作类型（登录 / 故障模拟 / 恢复 / 设备上下线 / 报警产生 / 报警恢复 ...） |
+| Target | string | 操作对象（设备名 / 接口） |
+| Detail | string | 操作详情 |
+| IpAddress | string | 来源 IP |
+| Timestamp | DateTime | 操作时间（UTC） |
+
 ---
 
 ## 项目结构
@@ -195,19 +229,25 @@ IndustrialMonitorAPI/
 ├── Controllers/
 │   ├── DevicesController.cs        # 设备接口
 │   ├── AlarmsController.cs         # 报警接口
-│   └── HistoryController.cs         # 历史数据接口
+│   ├── HistoryController.cs         # 历史数据接口
+│   ├── AuthController.cs          # 用户登录接口
+│   └── OperationLogsController.cs  # 操作日志接口
 ├── DTOs/
 │   ├── DeviceUpdateRequest.cs      # 设备更新请求模型
 │   ├── AlarmCreateRequest.cs       # 报警创建请求模型
-│   └── MetricHistoryRequest.cs      # 历史数据上报请求模型
+│   ├── MetricHistoryRequest.cs      # 历史数据上报请求模型
+│   └── OperationLogRequest.cs      # 操作日志请求模型
 ├── Services/
 │   ├── DeviceService.cs            # 设备业务逻辑
 │   ├── AlarmService.cs             # 报警业务逻辑
-│   └── MetricHistoryService.cs       # 历史数据业务逻辑
+│   ├── MetricHistoryService.cs       # 历史数据业务逻辑
+│   ├── AuthService.cs              # 登录鉴权（Demo 账号，内存 token）
+│   └── OperationLogService.cs       # 操作日志业务逻辑
 ├── Models/
 │   ├── Device.cs                   # 设备实体
 │   ├── AlarmRecord.cs              # 报警实体
-│   └── DeviceMetricHistory.cs      # 指标历史实体
+│   ├── DeviceMetricHistory.cs      # 指标历史实体
+│   └── OperationLog.cs            # 操作日志实体
 └── Data/
     └── AppDbContext.cs             # EF Core 上下文 + 种子数据
 └── Migrations/                      # EF Core 迁移脚本
@@ -247,6 +287,8 @@ EF Core 数据库上下文配置与种子数据。
 - **日志记录**：Service 层使用 `ILogger` 记录关键操作与警告
 - **Swagger 文档**：每个接口带 `EndpointSummary` / `EndpointDescription` 说明
 - **CORS**：允许任意来源，方便 Unity Editor（localhost）调用
+- **登录鉴权**：`AuthController` 提供登录接口，`AuthService` 签发内存 token；前端 `ApiClient` 登录后自动附加 `Authorization` 头
+- **操作日志审计**：关键操作自动上报 `POST /api/logs`；中间件保护写接口（未登录返回 401），`OperationLog` 持久化到 `OperationLogs` 表
 - **数据库迁移**：使用 EF Core Migrations 管理表结构，启动时 `Migrate()` 自动应用；种子数据通过 `HasData` 固化（避免动态默认值导致模型不确定）
 
 ---

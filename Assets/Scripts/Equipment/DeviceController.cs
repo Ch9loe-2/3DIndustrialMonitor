@@ -173,6 +173,7 @@ public class DeviceController : MonoBehaviour
         _ = SyncToApiAsync();
 
         Debug.Log($"设备 {deviceData.deviceName} 状态：{deviceData.status}");
+        ApiClient.Instance?.LogOperation("设备上下线", deviceData.deviceName, $"状态变为 {deviceData.status}");
     }
 
     private void SimulateTemperatureFault()
@@ -183,6 +184,7 @@ public class DeviceController : MonoBehaviour
         }
 
         isTemperatureFaultRunning = true;
+        ApiClient.Instance?.LogOperation("故障模拟", deviceData.deviceName, "手动触发温度过高故障");
         StartCoroutine(TemperatureFaultRoutine());
     }
 
@@ -242,6 +244,7 @@ public class DeviceController : MonoBehaviour
         }
 
         isPressureFaultRunning = true;
+        ApiClient.Instance?.LogOperation("故障模拟", deviceData.deviceName, "手动触发压力异常故障");
         StartCoroutine(PressureFaultRoutine());
     }
 
@@ -335,6 +338,8 @@ public class DeviceController : MonoBehaviour
         simEventTimer = UnityEngine.Random.Range(8f, 16f);
         targetTemperature = deviceData.initialTemperature;
         targetPressure = deviceData.initialPressure;
+
+        ApiClient.Instance?.LogOperation("设备恢复", deviceData.deviceName, "手动恢复正常");
     }
 
     private async Task SyncToApiAsync()

@@ -907,4 +907,255 @@ public class SetupIndustrialMonitorUI
 
         Debug.Log("AddHistoryPanel: 历史数据页创建完成");
     }
+
+    // ==================================================================
+    // 一键装配：多车间物理分区 + 概览车间统计 + 历史页车间按钮 + 登录 UI
+    // 需先运行 Tools/Setup Industrial Monitor UI V1（生成 OverviewPanel/HistoryPanel/SettingsPanel）
+    // ==================================================================
+    [MenuItem("Tools/一键装配：多车间与登录UI")]
+    public static void OneClickMultiWorkshopSetup()
+    {
+        if (EditorApplication.isPlaying)
+        {
+            EditorUtility.DisplayDialog("提示", "请先停止 Play 模式再运行此工具。", "确定");
+            return;
+        }
+
+        Undo.IncrementCurrentGroup();
+        int groupIndex = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("一键装配 多车间+登录UI");
+
+        try
+        {
+            GameObject canvasGO = GameObject.Find("MonitoringCanvas");
+            if (canvasGO == null)
+            {
+                EditorUtility.DisplayDialog("错误",
+                    "场景中找不到 MonitoringCanvas！请先运行 Tools/Setup Industrial Monitor UI V1。", "确定");
+                return;
+            }
+
+            TMP_FontAsset fontAsset = null;
+            string fontPath = AssetDatabase.GUIDToAssetPath("cdfa7aa6581984ded8e32df07bb0c59e");
+            if (!string.IsNullOrEmpty(fontPath))
+            {
+                fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(fontPath);
+            }
+
+            // 1. 复制二号车间（物理分区：外壳 + 设备 C）
+            SetupWorkshops.CopySecondWorkshop();
+
+            // 2. 概览面板：车间分组统计文本
+            MonitoringOverview overview = canvasGO.GetComponent<MonitoringOverview>();
+            BindWorkshopSummary(canvasGO, overview, fontAsset);
+
+            // 3. 历史页：车间切换按钮
+            Transform hp = canvasGO.transform.Find("HistoryPanel");
+            HistoryPanel historyPanel = hp != null ? hp.GetComponent<HistoryPanel>() : null;
+            BindWorkshopButtons(historyPanel, fontAsset);
+
+            // 4. 设置页：登录 UI
+            Transform sp = canvasGO.transform.Find("SettingsPanel");
+            BindLoginUI(sp != null ? sp.gameObject : null, fontAsset);
+
+            Undo.CollapseUndoOperations(groupIndex);
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+
+            EditorUtility.DisplayDialog("✅ 完成",
+                "一键装配完成！\n\n" +
+                "• 二号车间已复制（设备 C 已移入）\n" +
+                "• 概览面板已显示车间分组统计\n" +
+                "• 历史页已加入「一号/二号车间」切换按钮\n" +
+                "• 设置页已加入登录区（用户名 / 密码 / 登录）\n\n" +
+                "请 Ctrl+S (Cmd+S) 保存场景。", "确定");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"一键装配出错: {e.Message}\n{e.StackTrace}");
+            EditorUtility.DisplayDialog("错误", $"装配失败：{e.Message}", "确定");
+        }
+    }
+
+    // ==================================================================
+    // 概览面板：车间分组统计文本（绑定 MonitoringOverview.workshopSummaryText）
+    // ==================================================================
+    private static void BindWorkshopSummary(GameObject canvasGO, MonitoringOverview overview,
+        TMP_FontAsset font)
+    {
+        Transform overviewPanel = canvasGO.transform.Find("OverviewPanel");
+        if (overviewPanel == null)
+        {
+            Debug.LogWarning("BindWorkshopSummary: 找不到 OverviewPanel");
+            return;
+        }
+
+        if (overviewPanel.Find("WorkshopSummaryText") != null)
+        {
+            Debug.Log("BindWorkshopSummary: 已存在，跳过");
+            return;
+        }
+
+        TextMeshProUGUI ws = CreateTMPText(overviewPanel, "WorkshopSummaryText",
+            20, -155, 360, 28,
+            "车间统计：", 16, new Color(0.7f, 0.85f, 1f), font);
+
+        if (overview != null)
+        {
+            SetSerializedProperty(overview, "workshopSummaryText", ws);
+        }
+
+        Debug.Log("BindWorkshopSummary: 车间统计文本已绑定");
+    }
+
+    // ==================================================================
+    // 历史页：车间切换按钮（绑定 HistoryPanel.SelectWorkshop1/2）
+    // ==================================================================
+    private static void BindWorkshopButtons(HistoryPanel historyPanel, TMP_FontAsset font)
+    {
+        if (historyPanel == null)
+        {
+            Debug.LogWarning("BindWorkshopButtons: 找不到 HistoryPanel，请先运行 V1 Setup");
+            return;
+        }
+
+        Transform hp = historyPanel.transform;
+        if (hp.Find("Btn_Workshop1") != null)
+        {
+            Debug.Log("BindWorkshopButtons: 已存在，跳过");
+            return;
+        }
+
+        Button w1 = CreateButton(hp, "Btn_Workshop1", -65, -185, 120, 30, "一号车间", 14, font);
+        SetTopCenterAnchor(w1.GetComponent<RectTransform>());
+
+        Button w2 = CreateButton(hp, "Btn_Workshop2", 65, -185, 120, 30, "二号车间", 14, font);
+        SetTopCenterAnchor(w2.GetComponent<RectTransform>());
+
+        BindMethod(w1, historyPanel, "SelectWorkshop1");
+        BindMethod(w2, historyPanel, "SelectWorkshop2");
+
+        Debug.Log("BindWorkshopButtons: 车间切换按钮已绑定");
+    }
+
+    // ==================================================================
+    // 设置页：登录 UI（用户名 / 密码 / 登录按钮 / 当前用户 / 登录状态）
+    // 绑定到 SettingsPanel 的登录字段
+    // ==================================================================
+    private static void BindLoginUI(GameObject spGO, TMP_FontAsset font)
+    {
+        if (spGO == null)
+        {
+            Debug.LogWarning("BindLoginUI: 找不到 SettingsPanel，请先运行 V1 Setup");
+            return;
+        }
+
+        if (spGO.transform.Find("LoginUserInput") != null)
+        {
+            Debug.Log("BindLoginUI: 登录 UI 已存在，跳过");
+            return;
+        }
+
+        // 用户名输入
+        TMP_InputField userInput = CreateInputField(spGO.transform, "LoginUserInput",
+            0, -360, 240, 34, "用户名", font);
+        SetTopCenterAnchor(userInput.GetComponent<RectTransform>());
+
+        // 密码输入
+        TMP_InputField passInput = CreateInputField(spGO.transform, "LoginPassInput",
+            0, -405, 240, 34, "密码", font);
+        SetTopCenterAnchor(passInput.GetComponent<RectTransform>());
+        passInput.contentType = TMP_InputField.ContentType.Password;
+
+        // 登录按钮
+        Button loginBtn = CreateButton(spGO.transform, "LoginButton",
+            0, -450, 160, 34, "登录", 16, font);
+        SetTopCenterAnchor(loginBtn.GetComponent<RectTransform>());
+        Image btnImg = loginBtn.GetComponent<Image>();
+        if (btnImg != null) btnImg.color = new Color(0.2f, 0.5f, 0.9f, 0.85f);
+
+        // 当前用户文本
+        TextMeshProUGUI curUser = CreateTMPText(spGO.transform, "CurrentUserText",
+            0, -490, 260, 28, "当前用户：未登录", 15,
+            new Color(0.85f, 0.85f, 0.85f), TextAlignmentOptions.Center, font);
+        SetTopCenterAnchor(curUser.GetComponent<RectTransform>());
+
+        // 登录状态文本
+        TextMeshProUGUI loginStatus = CreateTMPText(spGO.transform, "LoginStatusText",
+            0, -515, 260, 24, "", 13, Color.yellow, TextAlignmentOptions.Center, font);
+        SetTopCenterAnchor(loginStatus.GetComponent<RectTransform>());
+
+        // 绑定到 SettingsPanel 组件
+        Component settingsComp = spGO.GetComponent("SettingsPanel");
+        if (settingsComp != null)
+        {
+            SetSerializedProperty(settingsComp, "loginUserInput", userInput);
+            SetSerializedProperty(settingsComp, "loginPassInput", passInput);
+            SetSerializedProperty(settingsComp, "loginButton", loginBtn);
+            SetSerializedProperty(settingsComp, "currentUserText", curUser);
+            SetSerializedProperty(settingsComp, "loginStatusText", loginStatus);
+
+            BindMethod(loginBtn, settingsComp, "OnLogin");
+        }
+
+        Debug.Log("BindLoginUI: 登录 UI 装配完成");
+    }
+
+    // ==================================================================
+    // 辅助：创建 TMP_InputField（含 Text Area / Placeholder / Text）
+    // ==================================================================
+    private static TMP_InputField CreateInputField(Transform parent, string name,
+        float x, float y, float w, float h, string placeholderText, TMP_FontAsset font)
+    {
+        GameObject inputGO = new GameObject(name, typeof(RectTransform));
+        Undo.RegisterCreatedObjectUndo(inputGO, "Create " + name);
+        inputGO.transform.SetParent(parent, false);
+
+        RectTransform inputRT = inputGO.GetComponent<RectTransform>();
+        inputRT.anchorMin = new Vector2(0.5f, 1f);
+        inputRT.anchorMax = new Vector2(0.5f, 1f);
+        inputRT.pivot = new Vector2(0.5f, 0.5f);
+        inputRT.anchoredPosition = new Vector2(x, y);
+        inputRT.sizeDelta = new Vector2(w, h);
+
+        inputGO.AddComponent<CanvasRenderer>();
+        Image inputBg = inputGO.AddComponent<Image>();
+        inputBg.color = new Color(1, 1, 1, 0.18f);
+        inputBg.type = Image.Type.Sliced;
+
+        TMP_InputField inputField = inputGO.AddComponent<TMP_InputField>();
+
+        GameObject textAreaGO = new GameObject("Text Area", typeof(RectTransform));
+        Undo.RegisterCreatedObjectUndo(textAreaGO, "Create TextArea");
+        textAreaGO.transform.SetParent(inputGO.transform, false);
+        RectTransform taRT = textAreaGO.GetComponent<RectTransform>();
+        taRT.anchorMin = Vector2.zero;
+        taRT.anchorMax = Vector2.one;
+        taRT.sizeDelta = new Vector2(-12, -6);
+        taRT.anchoredPosition = Vector2.zero;
+        textAreaGO.AddComponent<RectMask2D>();
+
+        TextMeshProUGUI placeholder = CreateTMPText(textAreaGO.transform, "Placeholder",
+            6, 0, 0, 0, placeholderText, 16,
+            new Color(1, 1, 1, 0.4f), TextAlignmentOptions.Left, font);
+        RectTransform phRT = placeholder.GetComponent<RectTransform>();
+        phRT.anchorMin = Vector2.zero;
+        phRT.anchorMax = Vector2.one;
+        phRT.sizeDelta = Vector2.zero;
+        phRT.anchoredPosition = Vector2.zero;
+
+        TextMeshProUGUI inputText = CreateTMPText(textAreaGO.transform, "Text",
+            6, 0, 0, 0, "", 16, Color.white, TextAlignmentOptions.Left, font);
+        RectTransform itRT = inputText.GetComponent<RectTransform>();
+        itRT.anchorMin = Vector2.zero;
+        itRT.anchorMax = Vector2.one;
+        itRT.sizeDelta = Vector2.zero;
+        itRT.anchoredPosition = Vector2.zero;
+
+        inputField.textViewport = taRT;
+        inputField.textComponent = inputText;
+        inputField.placeholder = placeholder;
+        inputField.fontAsset = placeholder.font;
+
+        return inputField;
+    }
 }

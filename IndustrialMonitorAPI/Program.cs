@@ -47,6 +47,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<DeviceService>();
 builder.Services.AddScoped<AlarmService>();
 builder.Services.AddScoped<MetricHistoryService>();
+builder.Services.AddSingleton<AuthService>();
+builder.Services.AddScoped<OperationLogService>();
 
 // CORS：允许 Unity Editor (localhost) 调用
 builder.Services.AddCors(options =>
@@ -86,6 +88,25 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowUnity");
+
+// 操作日志写接口需登录鉴权（演示"用户权限"：未登录无法写入操作日志，返回 401）
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/logs") &&
+        context.Request.Method.Equals("POST", System.StringComparison.OrdinalIgnoreCase))
+    {
+        string authHeader = context.Request.Headers["Authorization"].ToString();
+        if (!authHeader.StartsWith("Bearer ", System.StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.StatusCode = 401;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new ApiResponse<object>(401, "未登录，无法记录操作日志", null));
+            return;
+        }
+    }
+
+    await next();
+});
 
 app.MapControllers();
 
