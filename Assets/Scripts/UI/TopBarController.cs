@@ -12,10 +12,10 @@ public class TopBarController : MonoBehaviour
     [SerializeField] private TMP_Text systemStatusText;
     [SerializeField] private TMP_Text apiStatusText;
 
-    private readonly Color colorNormal = new Color(0.4f, 1f, 0.4f);     // 绿
-    private readonly Color colorWarning = new Color(1f, 0.85f, 0.2f);    // 黄
-    private readonly Color colorFault = new Color(1f, 0.45f, 0.45f);     // 红
-    private readonly Color colorOffline = new Color(0.7f, 0.7f, 0.7f);   // 灰
+    private static readonly Color ColorNormal = new Color(0.4f, 1f, 0.4f);     // 绿
+    private static readonly Color ColorWarning = new Color(1f, 0.85f, 0.2f);    // 黄
+    private static readonly Color ColorFault = new Color(1f, 0.45f, 0.45f);     // 红
+    private static readonly Color ColorOffline = new Color(0.7f, 0.7f, 0.7f);   // 灰
 
     private void OnEnable()
     {
@@ -59,7 +59,7 @@ public class TopBarController : MonoBehaviour
         }
 
         apiStatusText.text = connected ? "API：已连接" : "API：未连接";
-        apiStatusText.color = connected ? colorNormal : colorOffline;
+        apiStatusText.color = connected ? ColorNormal : ColorOffline;
     }
 
     /// <summary>根据所有设备的状态计算系统整体状态</summary>
@@ -103,22 +103,22 @@ public class TopBarController : MonoBehaviour
         if (fault > 0)
         {
             systemStatusText.text = $"● 系统异常（故障 {fault}）";
-            systemStatusText.color = colorFault;
+            systemStatusText.color = ColorFault;
         }
         else if (offline > 0)
         {
             systemStatusText.text = $"● 设备离线（{offline}）";
-            systemStatusText.color = colorOffline;
+            systemStatusText.color = ColorOffline;
         }
         else if (warning > 0)
         {
             systemStatusText.text = $"● 注意警告（{warning}）";
-            systemStatusText.color = colorWarning;
+            systemStatusText.color = ColorWarning;
         }
         else
         {
             systemStatusText.text = "● 系统正常";
-            systemStatusText.color = colorNormal;
+            systemStatusText.color = ColorNormal;
         }
     }
 }
