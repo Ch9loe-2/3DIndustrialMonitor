@@ -28,6 +28,8 @@ public class OperationLogsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRecent([FromQuery] int limit = 200)
     {
+        if (limit < 1) limit = 1;
+        if (limit > 1000) limit = 1000;
         var list = await _svc.GetRecentAsync(limit);
         return Ok(new ApiResponse<object>(200, "查询成功", list));
     }

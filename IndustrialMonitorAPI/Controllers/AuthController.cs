@@ -34,7 +34,7 @@ public class AuthController : ControllerBase
 
         if (!_auth.Validate(req.Username, req.Password))
         {
-            return Ok(new ApiResponse<object>(401, "用户名或密码错误", null));
+            return Unauthorized(new ApiResponse<object>(401, "用户名或密码错误", null));
         }
 
         string token = _auth.IssueToken(req.Username);
