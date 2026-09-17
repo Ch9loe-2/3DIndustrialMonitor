@@ -233,13 +233,13 @@ public class AlarmManager : MonoBehaviour
             return;
         }
 
-        // 找最新一条"未恢复"报警；若无，显示"✓ 当前无异常报警"
+        // 找最新一条"未恢复"报警（倒序遍历，因新报警追加在列表末尾）
         AlarmRecord latest = null;
-        foreach (AlarmRecord record in alarmRecords)
+        for (int i = alarmRecords.Count - 1; i >= 0; i--)
         {
-            if (record.status == "未恢复")
+            if (alarmRecords[i].status == "未恢复")
             {
-                latest = record;
+                latest = alarmRecords[i];
                 break;
             }
         }
