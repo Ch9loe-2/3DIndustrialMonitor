@@ -48,7 +48,7 @@
 
 ```bash
 cd IndustrialMonitorAPI
-dotnet run --urls "http://localhost:5000"
+dotnet run --urls "http://localhost:5175"
 ```
 
 后端会自动创建 SQLite 数据库并写入 3 台设备种子数据。
